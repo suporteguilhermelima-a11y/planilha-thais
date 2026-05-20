@@ -8,9 +8,22 @@ export type Categoria = {
   created_at: string
 }
 
+export type Mochila = {
+  id: string
+  categoria_id: string
+  nome: string
+  numero: string | null
+  cor: string | null
+  descricao: string | null
+  ordem: number
+  created_at: string
+  total_itens?: number
+}
+
 export type Medicamento = {
   id: string
   categoria_id: string
+  mochila_id: string | null
   nome: string
   qtde_estoque: number
   qtde_minima: number

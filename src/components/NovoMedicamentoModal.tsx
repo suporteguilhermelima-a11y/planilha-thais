@@ -6,11 +6,12 @@ import { X, Loader2 } from 'lucide-react'
 
 type Props = {
   categoriaId: string
+  mochilaId: string
   onClose: () => void
   onSalvo: () => void
 }
 
-export default function NovoMedicamentoModal({ categoriaId, onClose, onSalvo }: Props) {
+export default function NovoMedicamentoModal({ categoriaId, mochilaId, onClose, onSalvo }: Props) {
   const [nome, setNome] = useState('')
   const [qtde, setQtde] = useState(0)
   const [unidade, setUnidade] = useState('amp')
@@ -22,6 +23,7 @@ export default function NovoMedicamentoModal({ categoriaId, onClose, onSalvo }: 
     setSalvando(true)
     await supabase.from('medicamentos').insert({
       categoria_id: categoriaId,
+      mochila_id: mochilaId,
       nome: nome.trim(),
       qtde_estoque: qtde,
       unidade,
