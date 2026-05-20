@@ -15,7 +15,19 @@ type SeedItem = {
   l: { n: string; q: number; v: string | null }[] // lotes
 }
 
-export async function GET() {
+const INVALID_NAMES = ['DESCRIÇÃO DO ITEM', 'DESCRIÇAO DO ITEM', 'DESCRICAO DO ITEM',
+  'N° AT:', 'N° ATEND', 'QTDE. UTILIZADA', 'QTDE UTILIZADA', 'LOTE', 'VALIDADE']
+
+function isValidName(name: string) {
+  const u = name.toUpperCase().trim()
+  if (u.length < 5) return false
+  return !INVALID_NAMES.some(k => u.startsWith(k) || u === k)
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const reset = searchParams.get('reset') === 'true'
+
   try {
     // Busca todas as categorias
     const { data: categorias, error: catError } = await supabase
@@ -31,7 +43,13 @@ export async function GET() {
       catMap[cat.nome] = cat.id
     }
 
-    const data = seedData as SeedItem[]
+    // Se reset=true, limpa dados antigos
+    if (reset) {
+      await supabase.from('lotes').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+      await supabase.from('medicamentos').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    }
+
+    const data = (seedData as SeedItem[]).filter(item => isValidName(item.n))
     let medCount = 0
     let loteCount = 0
     const BATCH = 50
@@ -47,7 +65,7 @@ export async function GET() {
         alto_risco: item.ar,
         ativo: true,
         ordem: i + idx,
-      })).filter(r => r.categoria_id)
+      })).filter(r => r.categoria_id && isValidName(r.nome))
 
       if (medRows.length === 0) continue
 

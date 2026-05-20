@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Categoria, Medicamento } from '@/types'
 import Sidebar from '@/components/Sidebar'
@@ -16,6 +16,7 @@ export default function Home() {
   const [carregando, setCarregando] = useState(false)
   const [mostrarModal, setMostrarModal] = useState(false)
   const [filtroAlerta, setFiltroAlerta] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     carregarCategorias()
@@ -27,16 +28,22 @@ export default function Home() {
 
   useEffect(() => {
     if (!categoriaAtiva) return
+    const catId = categoriaAtiva.id
     const channel = supabase
-      .channel('medicamentos-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'medicamentos' }, () => {
-        carregarMedicamentos(categoriaAtiva.id)
+      .channel(`realtime-cat-${catId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'medicamentos', filter: `categoria_id=eq.${catId}` }, () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current)
+        debounceRef.current = setTimeout(() => carregarMedicamentos(catId), 800)
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lotes' }, () => {
-        carregarMedicamentos(categoriaAtiva.id)
+        if (debounceRef.current) clearTimeout(debounceRef.current)
+        debounceRef.current = setTimeout(() => carregarMedicamentos(catId), 800)
       })
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      supabase.removeChannel(channel)
+    }
   }, [categoriaAtiva])
 
   const carregarCategorias = async () => {
