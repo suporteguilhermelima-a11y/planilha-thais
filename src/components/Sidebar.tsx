@@ -1,7 +1,7 @@
 'use client'
 
 import { Categoria, Mochila } from '@/types'
-import { ChevronDown, ChevronRight, Menu, X, Backpack } from 'lucide-react'
+import { ChevronDown, ChevronRight, Menu, X, Backpack, Download } from 'lucide-react'
 import { useState } from 'react'
 
 type Props = {
@@ -12,6 +12,7 @@ type Props = {
   onSelectCategoria: (cat: Categoria) => void
   onSelectMochila: (mochila: Mochila) => void
   onIrParaInicio: () => void
+  onExportarMochila?: (mochila: Mochila) => void
 }
 
 export default function Sidebar({
@@ -22,6 +23,7 @@ export default function Sidebar({
   onSelectCategoria,
   onSelectMochila,
   onIrParaInicio,
+  onExportarMochila,
 }: Props) {
   const [aberto, setAberto] = useState(false)
   const [expandidas, setExpandidas] = useState<Set<string>>(new Set())
@@ -105,28 +107,41 @@ export default function Sidebar({
                 {expandido && mochilas.length > 0 && (
                   <div className="bg-gray-800/50 border-l-2 border-blue-500/30 ml-3">
                     {mochilas.map((m) => (
-                      <button
-                        key={m.id}
-                        onClick={() => {
-                          onSelectMochila(m)
-                          setAberto(false)
-                        }}
-                        className={`
-                          w-full text-left pl-6 pr-4 py-2 flex items-center gap-2
-                          hover:bg-gray-700/50 transition-colors text-xs
-                          ${mochilaAtiva?.id === m.id ? 'bg-blue-900/40 text-blue-200' : 'text-gray-300'}
-                        `}
-                      >
-                        <Backpack size={12} className="shrink-0 opacity-60" />
-                        <span className="flex-1 truncate">{m.nome}</span>
-                        {m.cor && (
-                          <span
-                            className="w-2 h-2 rounded-full shrink-0"
-                            style={{ backgroundColor: corHex(m.cor) }}
-                            title={m.cor}
-                          />
+                      <div key={m.id} className="group flex items-center">
+                        <button
+                          onClick={() => {
+                            onSelectMochila(m)
+                            setAberto(false)
+                          }}
+                          className={`
+                            flex-1 min-w-0 text-left pl-6 pr-2 py-2 flex items-center gap-2
+                            hover:bg-gray-700/50 transition-colors text-xs
+                            ${mochilaAtiva?.id === m.id ? 'bg-blue-900/40 text-blue-200' : 'text-gray-300'}
+                          `}
+                        >
+                          <Backpack size={12} className="shrink-0 opacity-60" />
+                          <span className="flex-1 truncate">{m.nome}</span>
+                          {m.cor && (
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: corHex(m.cor) }}
+                              title={m.cor}
+                            />
+                          )}
+                        </button>
+                        {onExportarMochila && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onExportarMochila(m)
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity pr-3 py-2 text-gray-500 hover:text-green-400"
+                            title="Exportar CSV"
+                          >
+                            <Download size={11} />
+                          </button>
                         )}
-                      </button>
+                      </div>
                     ))}
                   </div>
                 )}

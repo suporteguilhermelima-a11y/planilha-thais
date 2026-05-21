@@ -8,7 +8,7 @@ import MedicamentoRow from '@/components/MedicamentoRow'
 import NovoMedicamentoModal from '@/components/NovoMedicamentoModal'
 import DashboardInicial from '@/components/DashboardInicial'
 import VistaAlertasGlobais from '@/components/VistaAlertasGlobais'
-import { Plus, RefreshCw, Search, AlertTriangle, Package, Backpack, Clock, X } from 'lucide-react'
+import { Plus, RefreshCw, Search, AlertTriangle, Package, Backpack, Clock, X, Download } from 'lucide-react'
 
 export default function Home() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
@@ -117,6 +117,59 @@ export default function Home() {
     setCarregando(false)
   }, [])
 
+  const exportarCSVMochila = async (mochila: Mochila) => {
+    const { data } = await supabase
+      .from('medicamentos')
+      .select('*, lotes(*)')
+      .eq('mochila_id', mochila.id)
+      .eq('ativo', true)
+      .order('ordem')
+
+    const cat = categorias.find(c => c.id === mochila.categoria_id)
+    const titulo = [cat?.nome, mochila.nome, mochila.numero ? `Nº ${mochila.numero}` : ''].filter(Boolean).join(' - ')
+    const hoje = new Date().toLocaleDateString('pt-BR')
+
+    const formatarData = (v: string) =>
+      new Date(v + 'T00:00:00').toLocaleDateString('pt-BR')
+
+    const csvLinhas: string[] = [
+      `"${titulo}"`,
+      `"Data: ${hoje}"`,
+      '',
+      '"Qtde Estoque","Descrição do Item","Lote","Validade"',
+    ]
+
+    for (const med of data || []) {
+      const lotes = (med.lotes || []) as { numero_lote: string; validade?: string | null; quantidade: number }[]
+      let lotesStr = ''
+      let validadesStr = ''
+
+      if (lotes.length === 0) {
+        lotesStr = ''
+        validadesStr = ''
+      } else if (lotes.length === 1) {
+        lotesStr = lotes[0].numero_lote
+        validadesStr = lotes[0].validade ? formatarData(lotes[0].validade) : ''
+      } else {
+        lotesStr = lotes.map(l => `(${l.quantidade}) ${l.numero_lote}`).join(' | ')
+        validadesStr = lotes.map(l => l.validade ? formatarData(l.validade) : '').join(' | ')
+      }
+
+      const nome = med.alto_risco ? `${med.nome} [ALTO RISCO]` : med.nome
+      csvLinhas.push(`"${med.qtde_estoque}","${nome}","${lotesStr}","${validadesStr}"`)
+    }
+
+    const conteudo = '﻿' + csvLinhas.join('\n')
+    const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const nomeArquivo = `${mochila.nome.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = nomeArquivo
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const irParaInicio = () => {
     setCategoriaAtiva(null)
     setMochilaAtiva(null)
@@ -183,6 +236,7 @@ export default function Home() {
         onSelectCategoria={handleSelectCategoria}
         onSelectMochila={handleSelectMochila}
         onIrParaInicio={irParaInicio}
+        onExportarMochila={exportarCSVMochila}
       />
 
       <main className="flex-1 flex flex-col overflow-hidden">
@@ -276,6 +330,14 @@ export default function Home() {
                 title="Atualizar"
               >
                 <RefreshCw size={18} className={carregando ? 'animate-spin' : ''} />
+              </button>
+              <button
+                onClick={() => exportarCSVMochila(mochilaAtiva)}
+                className="flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                title="Exportar CSV para impressão"
+              >
+                <Download size={16} />
+                CSV
               </button>
               <button
                 onClick={() => setMostrarModal(true)}
