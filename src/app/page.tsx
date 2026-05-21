@@ -8,7 +8,7 @@ import MedicamentoRow from '@/components/MedicamentoRow'
 import NovoMedicamentoModal from '@/components/NovoMedicamentoModal'
 import DashboardInicial from '@/components/DashboardInicial'
 import VistaAlertasGlobais from '@/components/VistaAlertasGlobais'
-import { Plus, RefreshCw, Search, AlertTriangle, Package, Backpack, Clock, X, Download } from 'lucide-react'
+import { Plus, RefreshCw, Search, AlertTriangle, Package, Backpack, Clock, X, Download, Printer } from 'lucide-react'
 
 export default function Home() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
@@ -133,8 +133,8 @@ export default function Home() {
       new Date(v + 'T00:00:00').toLocaleDateString('pt-BR')
 
     const csvLinhas: string[] = [
-      `"${titulo}"`,
-      `"Data: ${hoje}"`,
+      `"${titulo}","","","LOTE"`,
+      `"Data: ${hoje}","","",""`,
       '',
       '"Qtde Estoque","Descrição do Item","Lote","Validade"',
     ]
@@ -168,6 +168,99 @@ export default function Home() {
     a.download = nomeArquivo
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const imprimirMochila = async (mochila: Mochila) => {
+    const { data } = await supabase
+      .from('medicamentos')
+      .select('*, lotes(*)')
+      .eq('mochila_id', mochila.id)
+      .eq('ativo', true)
+      .order('ordem')
+
+    const cat = categorias.find(c => c.id === mochila.categoria_id)
+    const titulo = [cat?.nome, mochila.nome, mochila.numero ? `Nº ${mochila.numero}` : ''].filter(Boolean).join(' - ')
+    const hoje = new Date().toLocaleDateString('pt-BR')
+
+    const formatarData = (v: string) =>
+      new Date(v + 'T00:00:00').toLocaleDateString('pt-BR')
+
+    const rows = (data || []).map(med => {
+      const lotes = (med.lotes || []) as { numero_lote: string; validade?: string | null; quantidade: number }[]
+      let lotesStr = ''
+      let validadesStr = ''
+      if (lotes.length === 0) {
+        lotesStr = ''
+        validadesStr = ''
+      } else if (lotes.length === 1) {
+        lotesStr = lotes[0].numero_lote
+        validadesStr = lotes[0].validade ? formatarData(lotes[0].validade) : ''
+      } else {
+        lotesStr = lotes.map(l => `(${l.quantidade}) ${l.numero_lote}`).join(' | ')
+        validadesStr = lotes.map(l => l.validade ? formatarData(l.validade) : '').join(' | ')
+      }
+      const nome = med.alto_risco ? `${med.nome} [ALTO RISCO]` : med.nome
+      return `<tr>
+        <td style="text-align:center;font-weight:bold">${med.qtde_estoque}</td>
+        <td>${nome}</td>
+        <td>${lotesStr}</td>
+        <td>${validadesStr}</td>
+      </tr>`
+    }).join('')
+
+    const itemCount = (data || []).length
+    const fontSize = itemCount > 30 ? '7pt' : itemCount > 20 ? '8pt' : '9pt'
+
+    const html = `<!DOCTYPE html><html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>${titulo}</title>
+<style>
+  @page { size: A4 portrait; margin: 8mm 10mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: ${fontSize}; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th, td { border: 1px solid #000; padding: 2px 4px; word-wrap: break-word; overflow-wrap: break-word; }
+  .row-title th { background: #e8e8e8; }
+  .row-date td { background: #f5f5f5; }
+  .row-header th { background: #d0d0d0; font-weight: bold; text-align: center; }
+  .col-qtde { width: 8%; }
+  .col-desc { width: 48%; }
+  .col-lote { width: 28%; }
+  .col-valid { width: 16%; }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    thead { display: table-header-group; }
+  }
+</style>
+</head>
+<body>
+<table>
+  <thead>
+    <tr class="row-title">
+      <th colspan="3" style="text-align:left;font-size:10pt">${titulo}</th>
+      <th style="text-align:center">LOTE</th>
+    </tr>
+    <tr class="row-date">
+      <td colspan="4">Data: ${hoje}</td>
+    </tr>
+    <tr class="row-header">
+      <th class="col-qtde">Qtde Estoque</th>
+      <th class="col-desc">Descri&ccedil;&atilde;o do Item</th>
+      <th class="col-lote">Lote</th>
+      <th class="col-valid">Validade</th>
+    </tr>
+  </thead>
+  <tbody>${rows}</tbody>
+</table>
+<script>window.onload = function() { window.print(); }<\/script>
+</body>
+</html>`
+
+    const win = window.open('', '_blank', 'width=820,height=700')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
   }
 
   const irParaInicio = () => {
@@ -334,10 +427,18 @@ export default function Home() {
               <button
                 onClick={() => exportarCSVMochila(mochilaAtiva)}
                 className="flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
-                title="Exportar CSV para impressão"
+                title="Exportar CSV"
               >
                 <Download size={16} />
                 CSV
+              </button>
+              <button
+                onClick={() => imprimirMochila(mochilaAtiva)}
+                className="flex items-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
+                title="Imprimir em uma folha"
+              >
+                <Printer size={16} />
+                Imprimir
               </button>
               <button
                 onClick={() => setMostrarModal(true)}
