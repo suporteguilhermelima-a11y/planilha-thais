@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Categoria, Mochila, Medicamento } from '@/types'
+import { Categoria, Mochila, Medicamento, LoteAlerta } from '@/types'
 import Sidebar from '@/components/Sidebar'
 import MedicamentoRow from '@/components/MedicamentoRow'
 import NovoMedicamentoModal from '@/components/NovoMedicamentoModal'
-import { Plus, RefreshCw, Search, AlertTriangle, Package, Backpack } from 'lucide-react'
+import DashboardInicial from '@/components/DashboardInicial'
+import VistaAlertasGlobais from '@/components/VistaAlertasGlobais'
+import { Plus, RefreshCw, Search, AlertTriangle, Package, Backpack, Clock, X } from 'lucide-react'
 
 export default function Home() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
@@ -20,8 +22,14 @@ export default function Home() {
   const [filtroAlerta, setFiltroAlerta] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const [lotesAlerta, setLotesAlerta] = useState<LoteAlerta[]>([])
+  const [semEstoqueCount, setSemEstoqueCount] = useState(0)
+  const [carregandoAlertas, setCarregandoAlertas] = useState(false)
+  const [filtroGlobal, setFiltroGlobal] = useState<'vencidos' | 'a_vencer' | null>(null)
+
   useEffect(() => {
     carregarCategoriasEMochilas()
+    carregarAlertasGlobais()
   }, [])
 
   useEffect(() => {
@@ -36,11 +44,17 @@ export default function Home() {
       .channel(`realtime-moc-${mid}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'medicamentos', filter: `mochila_id=eq.${mid}` }, () => {
         if (debounceRef.current) clearTimeout(debounceRef.current)
-        debounceRef.current = setTimeout(() => carregarMedicamentos(mid), 600)
+        debounceRef.current = setTimeout(() => {
+          carregarMedicamentos(mid)
+          carregarAlertasGlobais()
+        }, 600)
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lotes' }, () => {
         if (debounceRef.current) clearTimeout(debounceRef.current)
-        debounceRef.current = setTimeout(() => carregarMedicamentos(mid), 600)
+        debounceRef.current = setTimeout(() => {
+          carregarMedicamentos(mid)
+          carregarAlertasGlobais()
+        }, 600)
       })
       .subscribe()
     return () => {
@@ -54,7 +68,6 @@ export default function Home() {
       supabase.from('categorias').select('*').order('ordem'),
       supabase.from('mochilas').select('*').order('ordem'),
     ])
-
     if (cats.data) setCategorias(cats.data)
     if (mochs.data) {
       const agrupado: Record<string, Mochila[]> = {}
@@ -65,6 +78,32 @@ export default function Home() {
       setMochilasPorCategoria(agrupado)
     }
   }
+
+  const carregarAlertasGlobais = useCallback(async () => {
+    setCarregandoAlertas(true)
+    const in10days = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const [{ data: lotes }, { count: semEstoque }] = await Promise.all([
+      supabase
+        .from('lotes')
+        .select(`
+          id, numero_lote, validade, quantidade, medicamento_id,
+          medicamentos (
+            id, nome, unidade, alto_risco, qtde_estoque, mochila_id,
+            mochilas ( id, nome, categorias ( id, nome, icone ) )
+          )
+        `)
+        .lte('validade', in10days)
+        .not('validade', 'is', null),
+      supabase
+        .from('medicamentos')
+        .select('*', { count: 'exact', head: true })
+        .eq('ativo', true)
+        .eq('qtde_estoque', 0),
+    ])
+    if (lotes) setLotesAlerta(lotes as LoteAlerta[])
+    setSemEstoqueCount(semEstoque || 0)
+    setCarregandoAlertas(false)
+  }, [])
 
   const carregarMedicamentos = useCallback(async (mochilaId: string) => {
     setCarregando(true)
@@ -78,13 +117,21 @@ export default function Home() {
     setCarregando(false)
   }, [])
 
+  const irParaInicio = () => {
+    setCategoriaAtiva(null)
+    setMochilaAtiva(null)
+    setFiltroGlobal(null)
+  }
+
   const handleSelectCategoria = (cat: Categoria) => {
     setCategoriaAtiva(cat)
     setMochilaAtiva(null)
+    setFiltroGlobal(null)
   }
 
   const handleSelectMochila = (m: Mochila) => {
     setMochilaAtiva(m)
+    setFiltroGlobal(null)
   }
 
   const medicamentosFiltrados = medicamentos.filter((m) => {
@@ -112,6 +159,18 @@ export default function Home() {
     })
   ).length
 
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  const limite10 = new Date(hoje.getTime() + 10 * 24 * 60 * 60 * 1000)
+  const globalVencidos = lotesAlerta.filter(l => l.validade && new Date(l.validade) < hoje)
+  const globalAVencer = lotesAlerta.filter(l => {
+    if (!l.validade) return false
+    const d = new Date(l.validade)
+    return d >= hoje && d <= limite10
+  })
+  const contagemVencidos = new Set(globalVencidos.map(l => l.medicamento_id)).size
+  const contagemAVencer = new Set(globalAVencer.map(l => l.medicamento_id)).size
+
   const mochilasDaCategoria = categoriaAtiva ? (mochilasPorCategoria[categoriaAtiva.id] || []) : []
 
   return (
@@ -123,11 +182,12 @@ export default function Home() {
         mochilaAtiva={mochilaAtiva}
         onSelectCategoria={handleSelectCategoria}
         onSelectMochila={handleSelectMochila}
+        onIrParaInicio={irParaInicio}
       />
 
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4">
+        <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-3">
           <div className="flex-1 min-w-0 ml-10 md:ml-0">
             {mochilaAtiva ? (
               <>
@@ -147,27 +207,63 @@ export default function Home() {
                 </h2>
                 <p className="text-sm text-gray-500">{medicamentos.length} itens</p>
               </>
+            ) : filtroGlobal ? (
+              <>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {filtroGlobal === 'vencidos' ? '🔴 Vencidos' : '🟠 A vencer em 10 dias'}
+                </h2>
+                <p className="text-sm text-gray-500">Filtro global — todas as mochilas</p>
+              </>
             ) : (
               <>
                 <h2 className="text-xl font-bold text-gray-900 truncate">
-                  {categoriaAtiva?.icone} {categoriaAtiva?.nome || 'Selecione uma categoria'}
+                  {categoriaAtiva?.icone} {categoriaAtiva?.nome || 'Dashboard'}
                 </h2>
                 <p className="text-sm text-gray-500">
-                  {categoriaAtiva ? `${mochilasDaCategoria.length} mochilas` : 'Escolha no menu lateral'}
+                  {categoriaAtiva ? `${mochilasDaCategoria.length} mochilas` : 'Visão geral crítica'}
                 </p>
               </>
             )}
           </div>
 
+          {/* Badges globais — sempre visíveis */}
+          {contagemVencidos > 0 && (
+            <button
+              onClick={() => { setCategoriaAtiva(null); setMochilaAtiva(null); setFiltroGlobal('vencidos') }}
+              className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-full font-semibold transition-all border ${
+                filtroGlobal === 'vencidos'
+                  ? 'bg-red-600 text-white border-red-600'
+                  : 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'
+              }`}
+            >
+              <AlertTriangle size={11} />
+              {contagemVencidos} vencido{contagemVencidos > 1 ? 's' : ''}
+            </button>
+          )}
+          {contagemAVencer > 0 && (
+            <button
+              onClick={() => { setCategoriaAtiva(null); setMochilaAtiva(null); setFiltroGlobal('a_vencer') }}
+              className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-full font-semibold transition-all border ${
+                filtroGlobal === 'a_vencer'
+                  ? 'bg-orange-500 text-white border-orange-500'
+                  : 'bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200'
+              }`}
+            >
+              <Clock size={11} />
+              {contagemAVencer} a vencer
+            </button>
+          )}
+
+          {/* Indicador local da mochila ativa */}
           {mochilaAtiva && totalVencidos > 0 && (
-            <span className="flex items-center gap-1 text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">
-              <AlertTriangle size={12} />
-              {totalVencidos} vencido{totalVencidos > 1 ? 's' : ''}
+            <span className="flex items-center gap-1 text-xs bg-red-50 text-red-600 px-2 py-1 rounded-full border border-red-200">
+              <AlertTriangle size={10} />
+              {totalVencidos} aqui
             </span>
           )}
           {mochilaAtiva && totalAlertas > 0 && (
-            <span className="flex items-center gap-1 text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium">
-              <AlertTriangle size={12} />
+            <span className="flex items-center gap-1 text-xs bg-yellow-50 text-yellow-600 px-2 py-1 rounded-full border border-yellow-200">
+              <AlertTriangle size={10} />
               {totalAlertas} expirando
             </span>
           )}
@@ -190,10 +286,20 @@ export default function Home() {
               </button>
             </>
           )}
+
+          {filtroGlobal && (
+            <button
+              onClick={() => setFiltroGlobal(null)}
+              className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+              title="Fechar filtro"
+            >
+              <X size={16} />
+            </button>
+          )}
         </header>
 
-        {/* Filtros (só quando mochila selecionada) */}
-        {mochilaAtiva && (
+        {/* Filtros (só quando mochila selecionada e sem filtro global) */}
+        {mochilaAtiva && !filtroGlobal && (
           <>
             <div className="bg-white border-b border-gray-100 px-6 py-3 flex items-center gap-3">
               <div className="flex items-center gap-2 flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
@@ -220,23 +326,35 @@ export default function Home() {
               <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border border-red-300 bg-red-50 inline-block" />Vencido</span>
               <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border border-yellow-300 bg-yellow-50 inline-block" />Vence em 30 dias</span>
               <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border border-gray-200 bg-white inline-block" />OK</span>
-              <span className="ml-auto text-gray-400 hidden sm:block">Clique nos números (1–5) para definir qtd. de lotes</span>
+              <span className="ml-auto text-gray-400 hidden sm:block">Use o botão Lotes para registrar lotes por medicamento</span>
             </div>
           </>
         )}
 
         {/* Conteúdo */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          {/* Sem categoria selecionada */}
-          {!categoriaAtiva && (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400">
-              <Package size={48} className="mb-3" />
-              <p>Selecione uma categoria no menu lateral</p>
-            </div>
+
+          {/* Vista de alertas globais */}
+          {filtroGlobal !== null && (
+            <VistaAlertasGlobais
+              lotes={filtroGlobal === 'vencidos' ? globalVencidos : globalAVencer}
+              tipo={filtroGlobal}
+              onFechar={() => setFiltroGlobal(null)}
+            />
           )}
 
-          {/* Categoria sem mochila: mostra grid de mochilas */}
-          {categoriaAtiva && !mochilaAtiva && (
+          {/* Dashboard inicial */}
+          {filtroGlobal === null && !categoriaAtiva && (
+            <DashboardInicial
+              lotesAlerta={lotesAlerta}
+              semEstoqueCount={semEstoqueCount}
+              carregando={carregandoAlertas}
+              onFiltrar={(tipo) => setFiltroGlobal(tipo)}
+            />
+          )}
+
+          {/* Categoria sem mochila: grid de mochilas */}
+          {filtroGlobal === null && categoriaAtiva && !mochilaAtiva && (
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-3">Selecione uma mochila</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -272,13 +390,13 @@ export default function Home() {
           )}
 
           {/* Mochila selecionada: lista de medicamentos */}
-          {mochilaAtiva && carregando && (
+          {filtroGlobal === null && mochilaAtiva && carregando && (
             <div className="flex items-center justify-center h-32 text-gray-400">
               <RefreshCw size={24} className="animate-spin mr-2" />
               Carregando...
             </div>
           )}
-          {mochilaAtiva && !carregando && medicamentosFiltrados.length === 0 && (
+          {filtroGlobal === null && mochilaAtiva && !carregando && medicamentosFiltrados.length === 0 && (
             <div className="flex flex-col items-center justify-center h-32 text-gray-400">
               <Package size={32} className="mb-2" />
               <p className="text-sm">Nenhum item nesta mochila</p>
@@ -287,7 +405,7 @@ export default function Home() {
               </button>
             </div>
           )}
-          {mochilaAtiva && !carregando && medicamentosFiltrados.map((med) => (
+          {filtroGlobal === null && mochilaAtiva && !carregando && medicamentosFiltrados.map((med) => (
             <MedicamentoRow
               key={med.id}
               medicamento={med}

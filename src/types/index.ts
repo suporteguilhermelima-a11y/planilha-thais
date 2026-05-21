@@ -53,6 +53,31 @@ export type LoteInput = {
   quantidade: number
 }
 
+export type LoteAlerta = {
+  id: string
+  numero_lote: string
+  validade: string | null
+  quantidade: number
+  medicamento_id: string
+  medicamentos: {
+    id: string
+    nome: string
+    unidade: string
+    alto_risco: boolean
+    qtde_estoque: number
+    mochila_id: string | null
+    mochilas: {
+      id: string
+      nome: string
+      categorias: {
+        id: string
+        nome: string
+        icone: string | null
+      }
+    } | null
+  } | null
+}
+
 export type Conferencia = {
   id: string
   categoria_id: string

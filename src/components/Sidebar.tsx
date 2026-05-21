@@ -11,6 +11,7 @@ type Props = {
   mochilaAtiva: Mochila | null
   onSelectCategoria: (cat: Categoria) => void
   onSelectMochila: (mochila: Mochila) => void
+  onIrParaInicio: () => void
 }
 
 export default function Sidebar({
@@ -20,6 +21,7 @@ export default function Sidebar({
   mochilaAtiva,
   onSelectCategoria,
   onSelectMochila,
+  onIrParaInicio,
 }: Props) {
   const [aberto, setAberto] = useState(false)
   const [expandidas, setExpandidas] = useState<Set<string>>(new Set())
@@ -58,8 +60,13 @@ export default function Sidebar({
         `}
       >
         <div className="p-4 border-b border-gray-700">
-          <h1 className="text-lg font-bold text-white">🏥 Controle VTR</h1>
-          <p className="text-xs text-gray-400 mt-1">Medicamentos · Mochilas · Lotes</p>
+          <button
+            onClick={() => { onIrParaInicio(); setAberto(false) }}
+            className="text-left w-full hover:opacity-80 transition-opacity"
+          >
+            <h1 className="text-lg font-bold text-white">🏥 Controle VTR</h1>
+            <p className="text-xs text-gray-400 mt-1">Medicamentos · Mochilas · Lotes</p>
+          </button>
         </div>
 
         <nav className="flex-1 overflow-y-auto py-2">
