@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Medicamento, LoteInput } from '@/types'
 import LoteFields from './LoteFields'
 import { supabase } from '@/lib/supabase'
@@ -18,6 +18,24 @@ export default function MedicamentoRow({ medicamento, onUpdate }: Props) {
   const [qtde, setQtde] = useState(medicamento.qtde_estoque)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [dropdownAberto, setDropdownAberto] = useState(false)
+  const [dropdownEditorAberto, setDropdownEditorAberto] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const dropdownEditorRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!dropdownAberto && !dropdownEditorAberto) return
+    const handle = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownAberto(false)
+      }
+      if (dropdownEditorRef.current && !dropdownEditorRef.current.contains(e.target as Node)) {
+        setDropdownEditorAberto(false)
+      }
+    }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [dropdownAberto, dropdownEditorAberto])
 
   const lotesAtuais = medicamento.lotes || []
 
@@ -129,23 +147,35 @@ export default function MedicamentoRow({ medicamento, onUpdate }: Props) {
           </span>
         )}
 
-        {/* Botões de lotes */}
+        {/* Botão Lotes com dropdown */}
         {!expandido && (
-          <div className="flex items-center gap-1 shrink-0">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <button
-                key={n}
-                onClick={() => abrirEdicao(n)}
-                className={`w-7 h-7 text-xs rounded font-bold border transition-colors ${
-                  lotesAtuais.length === n
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-600 border-gray-300 hover:bg-blue-50 hover:border-blue-400'
-                }`}
-                title={`${n} lote${n > 1 ? 's' : ''}`}
-              >
-                {n}
-              </button>
-            ))}
+          <div className="relative shrink-0" ref={dropdownRef}>
+            <button
+              onClick={() => setDropdownAberto((v) => !v)}
+              className={`flex items-center gap-1 text-xs px-2 py-1.5 rounded border font-medium transition-colors ${
+                lotesAtuais.length > 0
+                  ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
+                  : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Lotes{lotesAtuais.length > 0 && <span className="bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold">{lotesAtuais.length}</span>}
+              <ChevronDown size={12} className={`transition-transform ${dropdownAberto ? 'rotate-180' : ''}`} />
+            </button>
+            {dropdownAberto && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => { abrirEdicao(n); setDropdownAberto(false) }}
+                    className={`w-full text-left px-4 py-1.5 text-xs hover:bg-blue-50 transition-colors ${
+                      lotesAtuais.length === n ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700'
+                    }`}
+                  >
+                    {n} lote{n > 1 ? 's' : ''}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -193,22 +223,31 @@ export default function MedicamentoRow({ medicamento, onUpdate }: Props) {
         <div className="px-4 pb-4 border-t border-gray-100 pt-3">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium text-gray-700">
-              {numLotes} lote{numLotes > 1 ? 's' : ''}
+              Editando lotes
             </span>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  onClick={() => abrirEdicao(n)}
-                  className={`w-7 h-7 text-xs rounded font-bold border transition-colors ${
-                    numLotes === n
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-600 border-gray-300 hover:bg-blue-50'
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
+            <div className="relative" ref={dropdownEditorRef}>
+              <button
+                onClick={() => setDropdownEditorAberto((v) => !v)}
+                className="flex items-center gap-1 text-xs px-2 py-1.5 rounded border border-blue-300 bg-blue-50 text-blue-700 font-medium hover:bg-blue-100 transition-colors"
+              >
+                {numLotes} lote{numLotes > 1 ? 's' : ''}
+                <ChevronDown size={12} className={`transition-transform ${dropdownEditorAberto ? 'rotate-180' : ''}`} />
+              </button>
+              {dropdownEditorAberto && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => { abrirEdicao(n); setDropdownEditorAberto(false) }}
+                      className={`w-full text-left px-4 py-1.5 text-xs hover:bg-blue-50 transition-colors ${
+                        numLotes === n ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700'
+                      }`}
+                    >
+                      {n} lote{n > 1 ? 's' : ''}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
