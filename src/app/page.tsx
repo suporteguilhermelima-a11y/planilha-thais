@@ -100,7 +100,7 @@ export default function Home() {
         .eq('ativo', true)
         .eq('qtde_estoque', 0),
     ])
-    if (lotes) setLotesAlerta(lotes as LoteAlerta[])
+    if (lotes) setLotesAlerta(lotes as unknown as LoteAlerta[])
     setSemEstoqueCount(semEstoque || 0)
     setCarregandoAlertas(false)
   }, [])
