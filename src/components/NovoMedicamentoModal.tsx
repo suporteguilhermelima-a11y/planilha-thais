@@ -20,10 +20,8 @@ export default function NovoMedicamentoModal({ categoriaId, mochilaId, onClose, 
   const [salvando, setSalvando] = useState(false)
 
   const [todos, setTodos] = useState<Medicamento[]>([])
-  const [sugestoes, setSugestoes] = useState<Medicamento[]>([])
-  const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
+  const [lista, setLista] = useState<Medicamento[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
-  const listaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     supabase
@@ -31,43 +29,29 @@ export default function NovoMedicamentoModal({ categoriaId, mochilaId, onClose, 
       .select('*')
       .eq('ativo', true)
       .order('nome')
-      .then(({ data }) => { if (data) setTodos(data) })
-  }, [])
+      .then(({ data }) => {
+        if (data) {
+          setTodos(data)
+          setLista(data.filter(m => m.mochila_id !== mochilaId).slice(0, 40))
+        }
+      })
+  }, [mochilaId])
 
   useEffect(() => {
-    if (!nome.trim()) {
-      setSugestoes([])
-      setMostrarSugestoes(false)
-      return
+    const termo = nome.toLowerCase().trim()
+    const base = todos.filter(m => m.mochila_id !== mochilaId)
+    if (!termo) {
+      setLista(base.slice(0, 40))
+    } else {
+      setLista(base.filter(m => m.nome.toLowerCase().includes(termo)).slice(0, 40))
     }
-    const termo = nome.toLowerCase()
-    const filtrados = todos.filter(m =>
-      m.mochila_id !== mochilaId &&
-      m.nome.toLowerCase().includes(termo)
-    )
-    setSugestoes(filtrados.slice(0, 8))
-    setMostrarSugestoes(filtrados.length > 0)
   }, [nome, todos, mochilaId])
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (
-        listaRef.current && !listaRef.current.contains(e.target as Node) &&
-        inputRef.current && !inputRef.current.contains(e.target as Node)
-      ) {
-        setMostrarSugestoes(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
 
   const aplicarSugestao = (med: Medicamento) => {
     setNome(med.nome)
     setUnidade(med.unidade)
     setAltoRisco(med.alto_risco)
     setQtde(0)
-    setMostrarSugestoes(false)
     inputRef.current?.focus()
   }
 
@@ -97,49 +81,53 @@ export default function NovoMedicamentoModal({ categoriaId, mochilaId, onClose, 
           </button>
         </div>
 
-        <div className="space-y-4">
-          <div className="relative">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nome / Descrição</label>
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              <input
-                ref={inputRef}
-                type="text"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                onFocus={() => sugestoes.length > 0 && setMostrarSugestoes(true)}
-                placeholder="Ex: AMIODARONA 150MG/3ML"
-                className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-                autoFocus
-              />
-            </div>
+        {/* Campo de busca */}
+        <div className="relative mb-2">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder="Buscar ou digitar nome do medicamento..."
+            className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            autoFocus
+          />
+        </div>
 
-            {mostrarSugestoes && (
-              <div
-                ref={listaRef}
-                className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto"
-              >
-                <p className="text-[10px] text-gray-400 px-3 pt-2 pb-1 border-b">
-                  Clique para usar como base
-                </p>
-                {sugestoes.map((med) => (
-                  <button
-                    key={med.id}
-                    type="button"
-                    onMouseDown={() => aplicarSugestao(med)}
-                    className="w-full text-left px-3 py-2 hover:bg-blue-50 flex items-center gap-2 text-sm"
-                  >
-                    <span className="flex-1 truncate font-medium text-gray-900">{med.nome}</span>
-                    <span className="text-xs text-gray-400 shrink-0">{med.unidade}</span>
-                    {med.alto_risco && (
-                      <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded shrink-0">RISCO</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+        {/* Lista sempre visível */}
+        <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto mb-4">
+          {lista.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-4">
+              {todos.length === 0 ? 'Carregando...' : 'Nenhum item encontrado — será criado como novo'}
+            </p>
+          ) : (
+            <>
+              <p className="text-[10px] text-gray-400 px-3 pt-2 pb-1 border-b bg-white sticky top-0">
+                {nome.trim() ? `${lista.length} resultado(s)` : 'Todos os materiais — clique para usar como base'}
+              </p>
+              {lista.map((med) => (
+                <button
+                  key={med.id}
+                  type="button"
+                  onClick={() => aplicarSugestao(med)}
+                  className={`w-full text-left px-3 py-2 hover:bg-blue-50 flex items-center gap-2 text-sm transition-colors ${
+                    nome === med.nome ? 'bg-blue-50' : ''
+                  }`}
+                >
+                  <span className="flex-1 truncate font-medium text-gray-900">{med.nome}</span>
+                  <span className="text-xs text-gray-400 shrink-0">{med.unidade}</span>
+                  {med.alto_risco && (
+                    <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded shrink-0">RISCO</span>
+                  )}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
 
+        {/* Campos do formulário */}
+        <div className="space-y-3">
           <div className="flex gap-3">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">Qtde. Estoque</label>
@@ -184,7 +172,7 @@ export default function NovoMedicamentoModal({ categoriaId, mochilaId, onClose, 
           </div>
         </div>
 
-        <div className="flex gap-2 mt-6">
+        <div className="flex gap-2 mt-4">
           <button
             onClick={salvar}
             disabled={salvando || !nome.trim()}

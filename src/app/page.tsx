@@ -8,7 +8,9 @@ import MedicamentoRow from '@/components/MedicamentoRow'
 import NovoMedicamentoModal from '@/components/NovoMedicamentoModal'
 import DashboardInicial from '@/components/DashboardInicial'
 import VistaAlertasGlobais from '@/components/VistaAlertasGlobais'
-import { Plus, RefreshCw, Search, AlertTriangle, Package, Backpack, Clock, X, Download, Printer } from 'lucide-react'
+import NovaMochilaModal from '@/components/NovaMochilaModal'
+import TransferirMochilaModal from '@/components/TransferirMochilaModal'
+import { Plus, RefreshCw, Search, AlertTriangle, Package, Backpack, Clock, X, Download, Printer, ArrowLeftRight } from 'lucide-react'
 
 export default function Home() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
@@ -26,6 +28,8 @@ export default function Home() {
   const [semEstoqueCount, setSemEstoqueCount] = useState(0)
   const [carregandoAlertas, setCarregandoAlertas] = useState(false)
   const [filtroGlobal, setFiltroGlobal] = useState<'vencidos' | 'a_vencer' | null>(null)
+  const [mostrarNovaMochila, setMostrarNovaMochila] = useState(false)
+  const [mostrarTransferirMochila, setMostrarTransferirMochila] = useState(false)
 
   useEffect(() => {
     carregarCategoriasEMochilas()
@@ -318,6 +322,14 @@ export default function Home() {
   const contagemAVencer = new Set(globalAVencer.map(l => l.medicamento_id)).size
 
   const mochilasDaCategoria = categoriaAtiva ? (mochilasPorCategoria[categoriaAtiva.id] || []) : []
+  const ordemProxima = mochilasDaCategoria.reduce((max, m) => Math.max(max, m.ordem), 0) + 1
+  const outrasMovilas = mochilaAtiva
+    ? categorias.flatMap(cat =>
+        (mochilasPorCategoria[cat.id] || [])
+          .filter(m => m.id !== mochilaAtiva.id)
+          .map(m => ({ id: m.id, nome: m.nome, cor: m.cor, categoria_id: m.categoria_id, catNome: cat.nome }))
+      )
+    : []
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -441,6 +453,14 @@ export default function Home() {
                 Imprimir
               </button>
               <button
+                onClick={() => setMostrarTransferirMochila(true)}
+                className="flex items-center gap-2 bg-orange-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors"
+                title="Transferir todos os itens para outra mochila"
+              >
+                <ArrowLeftRight size={16} />
+                Transferir
+              </button>
+              <button
                 onClick={() => setMostrarModal(true)}
                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
               >
@@ -519,7 +539,16 @@ export default function Home() {
           {/* Categoria sem mochila: grid de mochilas */}
           {filtroGlobal === null && categoriaAtiva && !mochilaAtiva && (
             <div>
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Selecione uma mochila</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-700">Selecione uma mochila</h3>
+                <button
+                  onClick={() => setMostrarNovaMochila(true)}
+                  className="flex items-center gap-1.5 text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  <Plus size={14} />
+                  Nova Mochila
+                </button>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {mochilasDaCategoria.length === 0 && (
                   <p className="text-sm text-gray-400 col-span-full">Nenhuma mochila cadastrada nesta categoria.</p>
@@ -573,6 +602,8 @@ export default function Home() {
               key={med.id}
               medicamento={med}
               onUpdate={() => carregarMedicamentos(mochilaAtiva.id)}
+              outrasMovilas={outrasMovilas}
+              onMovido={() => carregarMedicamentos(mochilaAtiva.id)}
             />
           ))}
         </div>
@@ -584,6 +615,29 @@ export default function Home() {
           mochilaId={mochilaAtiva.id}
           onClose={() => setMostrarModal(false)}
           onSalvo={() => carregarMedicamentos(mochilaAtiva.id)}
+        />
+      )}
+
+      {mostrarNovaMochila && categoriaAtiva && (
+        <NovaMochilaModal
+          categoriaId={categoriaAtiva.id}
+          categoriaNome={categoriaAtiva.nome}
+          ordemProxima={ordemProxima}
+          onClose={() => setMostrarNovaMochila(false)}
+          onSalvo={carregarCategoriasEMochilas}
+        />
+      )}
+
+      {mostrarTransferirMochila && mochilaAtiva && (
+        <TransferirMochilaModal
+          mochilaOrigem={mochilaAtiva}
+          categorias={categorias}
+          mochilasPorCategoria={mochilasPorCategoria}
+          onClose={() => setMostrarTransferirMochila(false)}
+          onTransferido={async () => {
+            await carregarCategoriasEMochilas()
+            await carregarMedicamentos(mochilaAtiva.id)
+          }}
         />
       )}
     </div>

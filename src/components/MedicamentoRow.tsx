@@ -4,14 +4,33 @@ import { useState, useRef, useEffect } from 'react'
 import { Medicamento, LoteInput } from '@/types'
 import LoteFields from './LoteFields'
 import { supabase } from '@/lib/supabase'
-import { ChevronDown, ChevronUp, Save, AlertTriangle, Loader2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Save, AlertTriangle, Loader2, MoveRight } from 'lucide-react'
+
+type OutraMochila = {
+  id: string
+  nome: string
+  cor: string | null
+  categoria_id: string
+  catNome: string
+}
 
 type Props = {
   medicamento: Medicamento
   onUpdate: () => void
+  outrasMovilas?: OutraMochila[]
+  onMovido?: () => void
 }
 
-export default function MedicamentoRow({ medicamento, onUpdate }: Props) {
+function corHex(cor: string): string {
+  const map: Record<string, string> = {
+    vermelho: '#ef4444', azul: '#3b82f6', verde: '#10b981',
+    laranja: '#f97316', amarelo: '#eab308', branco: '#ffffff',
+    preto: '#1f2937', rosa: '#ec4899',
+  }
+  return map[cor.toLowerCase()] || '#6b7280'
+}
+
+export default function MedicamentoRow({ medicamento, onUpdate, outrasMovilas = [], onMovido }: Props) {
   const [expandido, setExpandido] = useState(false)
   const [numLotes, setNumLotes] = useState<number | null>(null)
   const [lotes, setLotes] = useState<LoteInput[]>([])
@@ -20,11 +39,15 @@ export default function MedicamentoRow({ medicamento, onUpdate }: Props) {
   const [erro, setErro] = useState<string | null>(null)
   const [dropdownAberto, setDropdownAberto] = useState(false)
   const [dropdownEditorAberto, setDropdownEditorAberto] = useState(false)
+  const [moverAberto, setMoverAberto] = useState(false)
+  const [movendo, setMovendo] = useState(false)
+  const [buscaMover, setBuscaMover] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
   const dropdownEditorRef = useRef<HTMLDivElement>(null)
+  const moverRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!dropdownAberto && !dropdownEditorAberto) return
+    if (!dropdownAberto && !dropdownEditorAberto && !moverAberto) return
     const handle = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownAberto(false)
@@ -32,17 +55,20 @@ export default function MedicamentoRow({ medicamento, onUpdate }: Props) {
       if (dropdownEditorRef.current && !dropdownEditorRef.current.contains(e.target as Node)) {
         setDropdownEditorAberto(false)
       }
+      if (moverRef.current && !moverRef.current.contains(e.target as Node)) {
+        setMoverAberto(false)
+        setBuscaMover('')
+      }
     }
     document.addEventListener('mousedown', handle)
     return () => document.removeEventListener('mousedown', handle)
-  }, [dropdownAberto, dropdownEditorAberto])
+  }, [dropdownAberto, dropdownEditorAberto, moverAberto])
 
   const lotesAtuais = medicamento.lotes || []
 
   const abrirEdicao = (n: number) => {
     setNumLotes(n)
     setExpandido(true)
-    // Preenche com lotes existentes ou vazios
     const existentes: LoteInput[] = lotesAtuais.slice(0, n).map((l) => ({
       id: l.id,
       numero_lote: l.numero_lote,
@@ -59,13 +85,8 @@ export default function MedicamentoRow({ medicamento, onUpdate }: Props) {
     setSalvando(true)
     setErro(null)
     try {
-      // Atualiza qtde_estoque
       await supabase.from('medicamentos').update({ qtde_estoque: qtde, updated_at: new Date().toISOString() }).eq('id', medicamento.id)
-
-      // Remove lotes antigos
       await supabase.from('lotes').delete().eq('medicamento_id', medicamento.id)
-
-      // Insere novos lotes
       if (lotes.length > 0) {
         const lotesParaSalvar = lotes
           .filter((l) => l.numero_lote.trim() !== '')
@@ -79,16 +100,32 @@ export default function MedicamentoRow({ medicamento, onUpdate }: Props) {
           await supabase.from('lotes').insert(lotesParaSalvar)
         }
       }
-
       setExpandido(false)
       setNumLotes(null)
       onUpdate()
-    } catch (e) {
+    } catch {
       setErro('Erro ao salvar. Tente novamente.')
     } finally {
       setSalvando(false)
     }
   }
+
+  const moverPara = async (alvo: OutraMochila) => {
+    setMovendo(true)
+    await supabase
+      .from('medicamentos')
+      .update({ mochila_id: alvo.id, categoria_id: alvo.categoria_id })
+      .eq('id', medicamento.id)
+    setMovendo(false)
+    setMoverAberto(false)
+    setBuscaMover('')
+    onMovido?.()
+  }
+
+  const mochilasFiltradas = outrasMovilas.filter(m =>
+    m.nome.toLowerCase().includes(buscaMover.toLowerCase()) ||
+    m.catNome.toLowerCase().includes(buscaMover.toLowerCase())
+  )
 
   const temVencimento = lotesAtuais.some((l) => {
     if (!l.validade) return false
@@ -107,7 +144,6 @@ export default function MedicamentoRow({ medicamento, onUpdate }: Props) {
       temVencimento ? 'border-yellow-300 bg-yellow-50/30' :
       'border-gray-200 bg-white'
     }`}>
-      {/* Linha principal */}
       <div className="flex items-center gap-3 px-4 py-3">
         {/* Qtde estoque */}
         {expandido ? (
@@ -132,7 +168,6 @@ export default function MedicamentoRow({ medicamento, onUpdate }: Props) {
           <p className="text-xs text-gray-500">{medicamento.unidade}</p>
         </div>
 
-        {/* Alerta vencimento */}
         {(temVencido || temVencimento) && (
           <AlertTriangle
             size={16}
@@ -140,11 +175,59 @@ export default function MedicamentoRow({ medicamento, onUpdate }: Props) {
           />
         )}
 
-        {/* Alto risco badge */}
         {medicamento.alto_risco && (
           <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium shrink-0">
             ALTO RISCO
           </span>
+        )}
+
+        {/* Botão Mover */}
+        {!expandido && outrasMovilas.length > 0 && (
+          <div className="relative shrink-0" ref={moverRef}>
+            <button
+              onClick={() => { setMoverAberto((v) => !v); setBuscaMover('') }}
+              className="flex items-center gap-1 text-xs px-2 py-1.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
+              title="Mover para outra mochila"
+              disabled={movendo}
+            >
+              {movendo ? <Loader2 size={11} className="animate-spin" /> : <MoveRight size={11} />}
+              Mover
+            </button>
+            {moverAberto && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 w-64">
+                <div className="p-2 border-b">
+                  <input
+                    type="text"
+                    value={buscaMover}
+                    onChange={(e) => setBuscaMover(e.target.value)}
+                    placeholder="Buscar mochila..."
+                    className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-blue-400"
+                    autoFocus
+                  />
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  {mochilasFiltradas.length === 0 && (
+                    <p className="text-xs text-gray-400 text-center py-3">Nenhuma mochila encontrada</p>
+                  )}
+                  {mochilasFiltradas.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => moverPara(m)}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors flex items-center gap-2"
+                    >
+                      <span className="flex-1 min-w-0">
+                        <span className="text-xs font-medium text-gray-900 block truncate">{m.nome}</span>
+                        <span className="text-[10px] text-gray-400">{m.catNome}</span>
+                      </span>
+                      {m.cor && (
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: corHex(m.cor) }} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Botão Lotes com dropdown */}
@@ -203,7 +286,7 @@ export default function MedicamentoRow({ medicamento, onUpdate }: Props) {
             const alerta = lote.validade && !vencido && (new Date(lote.validade).getTime() - Date.now()) < 30 * 24 * 60 * 60 * 1000
             return (
               <span
-                key={lote.id}
+                key={lote.id || i}
                 className={`text-xs px-2 py-1 rounded border ${
                   vencido ? 'bg-red-100 border-red-300 text-red-700' :
                   alerta ? 'bg-yellow-100 border-yellow-300 text-yellow-700' :
@@ -222,9 +305,7 @@ export default function MedicamentoRow({ medicamento, onUpdate }: Props) {
       {expandido && numLotes !== null && (
         <div className="px-4 pb-4 border-t border-gray-100 pt-3">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-gray-700">
-              Editando lotes
-            </span>
+            <span className="text-sm font-medium text-gray-700">Editando lotes</span>
             <div className="relative" ref={dropdownEditorRef}>
               <button
                 onClick={() => setDropdownEditorAberto((v) => !v)}
