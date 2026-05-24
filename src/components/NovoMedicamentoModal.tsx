@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
-import { X, Loader2 } from 'lucide-react'
+import { X, Loader2, Search } from 'lucide-react'
+import { Medicamento } from '@/types'
 
 type Props = {
   categoriaId: string
@@ -17,6 +18,58 @@ export default function NovoMedicamentoModal({ categoriaId, mochilaId, onClose, 
   const [unidade, setUnidade] = useState('amp')
   const [altoRisco, setAltoRisco] = useState(false)
   const [salvando, setSalvando] = useState(false)
+
+  const [todos, setTodos] = useState<Medicamento[]>([])
+  const [sugestoes, setSugestoes] = useState<Medicamento[]>([])
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const listaRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    supabase
+      .from('medicamentos')
+      .select('*')
+      .eq('ativo', true)
+      .order('nome')
+      .then(({ data }) => { if (data) setTodos(data) })
+  }, [])
+
+  useEffect(() => {
+    if (!nome.trim()) {
+      setSugestoes([])
+      setMostrarSugestoes(false)
+      return
+    }
+    const termo = nome.toLowerCase()
+    const filtrados = todos.filter(m =>
+      m.mochila_id !== mochilaId &&
+      m.nome.toLowerCase().includes(termo)
+    )
+    setSugestoes(filtrados.slice(0, 8))
+    setMostrarSugestoes(filtrados.length > 0)
+  }, [nome, todos, mochilaId])
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        listaRef.current && !listaRef.current.contains(e.target as Node) &&
+        inputRef.current && !inputRef.current.contains(e.target as Node)
+      ) {
+        setMostrarSugestoes(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const aplicarSugestao = (med: Medicamento) => {
+    setNome(med.nome)
+    setUnidade(med.unidade)
+    setAltoRisco(med.alto_risco)
+    setQtde(0)
+    setMostrarSugestoes(false)
+    inputRef.current?.focus()
+  }
 
   const salvar = async () => {
     if (!nome.trim()) return
@@ -45,16 +98,46 @@ export default function NovoMedicamentoModal({ categoriaId, mochilaId, onClose, 
         </div>
 
         <div className="space-y-4">
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">Nome / Descrição</label>
-            <input
-              type="text"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Ex: AMIODARONA 150MG/3ML"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-              autoFocus
-            />
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                onFocus={() => sugestoes.length > 0 && setMostrarSugestoes(true)}
+                placeholder="Ex: AMIODARONA 150MG/3ML"
+                className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                autoFocus
+              />
+            </div>
+
+            {mostrarSugestoes && (
+              <div
+                ref={listaRef}
+                className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto"
+              >
+                <p className="text-[10px] text-gray-400 px-3 pt-2 pb-1 border-b">
+                  Clique para usar como base
+                </p>
+                {sugestoes.map((med) => (
+                  <button
+                    key={med.id}
+                    type="button"
+                    onMouseDown={() => aplicarSugestao(med)}
+                    className="w-full text-left px-3 py-2 hover:bg-blue-50 flex items-center gap-2 text-sm"
+                  >
+                    <span className="flex-1 truncate font-medium text-gray-900">{med.nome}</span>
+                    <span className="text-xs text-gray-400 shrink-0">{med.unidade}</span>
+                    {med.alto_risco && (
+                      <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded shrink-0">RISCO</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3">
