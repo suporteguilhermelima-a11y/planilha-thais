@@ -11,6 +11,7 @@ import VistaAlertasGlobais from '@/components/VistaAlertasGlobais'
 import NovaMochilaModal from '@/components/NovaMochilaModal'
 import EditarMochilaModal from '@/components/EditarMochilaModal'
 import TransferirMochilaModal from '@/components/TransferirMochilaModal'
+import LacreTag from '@/components/LacreTag'
 import { Plus, RefreshCw, Search, AlertTriangle, Package, Backpack, Clock, X, Download, Printer, ArrowLeftRight, Pencil } from 'lucide-react'
 
 export default function Home() {
@@ -32,14 +33,6 @@ export default function Home() {
   const [mostrarNovaMochila, setMostrarNovaMochila] = useState(false)
   const [mostrarTransferirMochila, setMostrarTransferirMochila] = useState(false)
   const [mochilaParaEditar, setMochilaParaEditar] = useState<Mochila | null>(null)
-  const [lacreNumero, setLacreNumero] = useState('')
-  const [corLacre, setCorLacre] = useState('azul')
-  const [lacreDropdownOpen, setLacreDropdownOpen] = useState(false)
-
-  useEffect(() => {
-    setLacreNumero(mochilaAtiva?.numero_lacre ?? '')
-    setCorLacre(mochilaAtiva?.cor_lacre ?? 'azul')
-  }, [mochilaAtiva?.id])
 
   useEffect(() => {
     carregarCategoriasEMochilas()
@@ -340,12 +333,6 @@ export default function Home() {
     setMochilaAtiva({ ...mochilaAtiva, numero_lacre: novoNumero || null, cor_lacre: novaCor })
   }
 
-  const corLacreBg: Record<string, string> = {
-    azul: 'bg-blue-200 text-blue-900',
-    amarelo: 'bg-yellow-200 text-yellow-900',
-    vermelho: 'bg-red-200 text-red-900',
-  }
-
   const mochilasDaCategoria = categoriaAtiva ? (mochilasPorCategoria[categoriaAtiva.id] || []) : []
   const ordemProxima = mochilasDaCategoria.reduce((max, m) => Math.max(max, m.ordem), 0) + 1
   const outrasMovilas = mochilaAtiva
@@ -390,43 +377,12 @@ export default function Home() {
                   )}
                 </h2>
                 <p className="text-sm text-gray-500">{medicamentos.length} itens</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-gray-500 shrink-0">Lacre:</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={7}
-                    value={lacreNumero}
-                    onChange={(e) => setLacreNumero(e.target.value.replace(/\D/g, '').slice(0, 7))}
-                    onBlur={() => salvarLacre(lacreNumero, corLacre)}
-                    placeholder="0000000"
-                    className={`w-24 text-xs font-mono font-bold px-2 py-0.5 rounded border-0 outline-none focus:ring-2 focus:ring-blue-400 ${corLacreBg[corLacre] ?? corLacreBg.azul}`}
-                  />
-                  <div className="relative">
-                    <button
-                      onClick={() => setLacreDropdownOpen(o => !o)}
-                      className="flex items-center gap-1 text-xs px-2 py-0.5 rounded border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
-                    >
-                      <span className={`w-2.5 h-2.5 rounded-full ${corLacre === 'azul' ? 'bg-blue-400' : corLacre === 'amarelo' ? 'bg-yellow-400' : 'bg-red-400'}`} />
-                      {corLacre.charAt(0).toUpperCase() + corLacre.slice(1)}
-                      <span className="text-gray-400">▾</span>
-                    </button>
-                    {lacreDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 overflow-hidden">
-                        {['azul', 'amarelo', 'vermelho'].map((c) => (
-                          <button
-                            key={c}
-                            onClick={() => { setCorLacre(c); setLacreDropdownOpen(false); salvarLacre(lacreNumero, c) }}
-                            className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-gray-50 transition-colors ${corLacre === c ? 'font-semibold' : ''}`}
-                          >
-                            <span className={`w-2.5 h-2.5 rounded-full ${c === 'azul' ? 'bg-blue-400' : c === 'amarelo' ? 'bg-yellow-400' : 'bg-red-400'}`} />
-                            {c.charAt(0).toUpperCase() + c.slice(1)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <LacreTag
+                  key={mochilaAtiva.id}
+                  numero={mochilaAtiva.numero_lacre ?? ''}
+                  cor={(mochilaAtiva.cor_lacre as 'azul' | 'amarelo' | 'vermelho') || 'azul'}
+                  onSave={salvarLacre}
+                />
               </>
             ) : filtroGlobal ? (
               <>
