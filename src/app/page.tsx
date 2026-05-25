@@ -9,8 +9,9 @@ import NovoMedicamentoModal from '@/components/NovoMedicamentoModal'
 import DashboardInicial from '@/components/DashboardInicial'
 import VistaAlertasGlobais from '@/components/VistaAlertasGlobais'
 import NovaMochilaModal from '@/components/NovaMochilaModal'
+import EditarMochilaModal from '@/components/EditarMochilaModal'
 import TransferirMochilaModal from '@/components/TransferirMochilaModal'
-import { Plus, RefreshCw, Search, AlertTriangle, Package, Backpack, Clock, X, Download, Printer, ArrowLeftRight } from 'lucide-react'
+import { Plus, RefreshCw, Search, AlertTriangle, Package, Backpack, Clock, X, Download, Printer, ArrowLeftRight, Pencil } from 'lucide-react'
 
 export default function Home() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
@@ -30,6 +31,7 @@ export default function Home() {
   const [filtroGlobal, setFiltroGlobal] = useState<'vencidos' | 'a_vencer' | null>(null)
   const [mostrarNovaMochila, setMostrarNovaMochila] = useState(false)
   const [mostrarTransferirMochila, setMostrarTransferirMochila] = useState(false)
+  const [mochilaParaEditar, setMochilaParaEditar] = useState<Mochila | null>(null)
 
   useEffect(() => {
     carregarCategoriasEMochilas()
@@ -554,28 +556,39 @@ export default function Home() {
                   <p className="text-sm text-gray-400 col-span-full">Nenhuma mochila cadastrada nesta categoria.</p>
                 )}
                 {mochilasDaCategoria.map((m) => (
-                  <button
+                  <div
                     key={m.id}
-                    onClick={() => handleSelectMochila(m)}
-                    className="text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-md transition-all"
+                    className="relative group bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-md transition-all"
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <Backpack size={20} className="text-blue-600" />
-                      {m.cor && (
-                        <span className="flex items-center gap-1 text-xs text-gray-500">
-                          <span
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: corHex(m.cor) }}
-                          />
-                          {m.cor}
-                        </span>
+                    <button
+                      onClick={() => handleSelectMochila(m)}
+                      className="text-left w-full"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <Backpack size={20} className="text-blue-600" />
+                        {m.cor && (
+                          <span className="flex items-center gap-1 text-xs text-gray-500">
+                            <span
+                              className="w-3 h-3 rounded-full border border-black/10"
+                              style={{ backgroundColor: corHex(m.cor) }}
+                            />
+                            {m.cor}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1">{m.nome}</p>
+                      {m.numero && (
+                        <p className="text-xs text-gray-500">N° {m.numero}</p>
                       )}
-                    </div>
-                    <p className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1">{m.nome}</p>
-                    {m.numero && (
-                      <p className="text-xs text-gray-500">N° {m.numero}</p>
-                    )}
-                  </button>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setMochilaParaEditar(m) }}
+                      className="absolute top-2 right-2 p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-all"
+                      title="Editar mochila"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -625,6 +638,16 @@ export default function Home() {
           ordemProxima={ordemProxima}
           onClose={() => setMostrarNovaMochila(false)}
           onSalvo={carregarCategoriasEMochilas}
+        />
+      )}
+
+      {mochilaParaEditar && categoriaAtiva && (
+        <EditarMochilaModal
+          mochila={mochilaParaEditar}
+          categoriaNome={categoriaAtiva.nome}
+          onClose={() => setMochilaParaEditar(null)}
+          onSalvo={carregarCategoriasEMochilas}
+          onApagado={carregarCategoriasEMochilas}
         />
       )}
 

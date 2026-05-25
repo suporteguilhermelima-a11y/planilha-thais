@@ -7,7 +7,7 @@ import { X, Loader2 } from 'lucide-react'
 const CORES = ['azul', 'vermelho', 'verde', 'laranja', 'amarelo', 'rosa', 'preto', 'branco']
 const COR_HEX: Record<string, string> = {
   vermelho: '#ef4444', azul: '#3b82f6', verde: '#10b981',
-  laranja: '#f97316', amarelo: '#eab308', branco: '#e5e7eb',
+  laranja: '#f97316', amarelo: '#eab308', branco: '#ffffff',
   preto: '#1f2937', rosa: '#ec4899',
 }
 
@@ -81,16 +81,29 @@ export default function NovaMochilaModal({ categoriaId, categoriaNome, ordemProx
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Cor (opcional)</label>
             <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setCor('')}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
+                  cor === '' ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <span className="w-3 h-3 rounded-full border border-gray-300 bg-white" />
+                sem cor
+              </button>
               {CORES.map((c) => (
                 <button
                   key={c}
                   type="button"
-                  onClick={() => setCor(cor === c ? '' : c)}
+                  onClick={() => setCor(c)}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
                     cor === c ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <span className="w-3 h-3 rounded-full border border-black/10" style={{ backgroundColor: COR_HEX[c] }} />
+                  <span
+                    className="w-3 h-3 rounded-full border border-black/10"
+                    style={{ backgroundColor: COR_HEX[c] }}
+                  />
                   {c}
                 </button>
               ))}
