@@ -38,107 +38,107 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
     onSave(val, novaCor)
   }
 
-  // ── Layout (viewBox 380 × 228) ─────────────────────────────
-  // Tag: horizontal left
-  const TX = 8, TY = 140, TW = 208, TH = 62, TR = 28
-  const TCY = TY + TH / 2            // 171
+  // ── Proporções fiéis à foto ────────────────────────────────
+  // viewBox 340 × 195
+  // Tag ocupa ~56% da largura, argola ~29%
 
-  // Rivet: right end of tag
-  const RCX = 200, RCY = TCY, RR = 12
+  const TX = 5, TY = 118, TW = 192, TH = 56, TR = 22
+  const TCY = TY + TH / 2  // 146
 
-  // Loop: large oval upper-right
-  const LCX = 298, LCY = 72, LRX = 66, LRY = 72, LSW = 20
+  // Rebite: extremo direito da tag
+  const RCX = 182, RCY = TCY, RR = 9
 
-  // Recessed number panel
-  const PX = TX + 16, PY = TY + 12, PW = TW - 58, PH = TH - 24, PR = 8
+  // Argola: circular, superior direita — diâmetro ≈ 2× altura da tag
+  const LCX = 260, LCY = 58, LR = 45, LSW = 12
 
-  // Strap band from rivet up to loop
-  const STRAP = `M 190 162 C 212 136, 246 118, 268 110
-                 L 280 124 C 254 134, 220 156, 204 180 Z`
+  // Painel rebaixado para o número
+  const PX = TX + 14, PY = TY + 10, PW = TW - 52, PH = TH - 20, PR = 7
+
+  // Fita conectora: sai do rebite, sobe até o fundo da argola
+  const STRAP = `M 175 138 C 186 116, 208 104, 224 100
+                 L 230 110 C 214 116, 194 132, 184 150 Z`
 
   return (
     <div className="flex items-center gap-3 mt-1" style={{ userSelect: 'none' }}>
       <div style={{ lineHeight: 0 }}>
-        <svg width="300" height="184" viewBox="0 0 380 228" xmlns="http://www.w3.org/2000/svg">
+        <svg width="280" height="160" viewBox="0 0 340 195" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id={`tg-${corAtual}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   stopColor={c.light} stopOpacity="0.40" />
-              <stop offset="30%"  stopColor={c.base} />
+              <stop offset="0%"   stopColor={c.light} stopOpacity="0.38" />
+              <stop offset="28%"  stopColor={c.base} />
               <stop offset="100%" stopColor={c.dark} />
             </linearGradient>
             <linearGradient id={`lg-${corAtual}`} x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%"   stopColor={c.light} />
-              <stop offset="46%"  stopColor={c.base} />
+              <stop offset="45%"  stopColor={c.base} />
               <stop offset="100%" stopColor={c.dark} />
             </linearGradient>
             <radialGradient id={`rg-${corAtual}`} cx="36%" cy="30%" r="72%">
               <stop offset="0%"   stopColor={c.light} />
               <stop offset="100%" stopColor={c.deeper} />
             </radialGradient>
-            <filter id="tag-shadow" x="-10%" y="-18%" width="128%" height="150%">
-              <feDropShadow dx="0" dy="7" stdDeviation="9" floodColor="#000" floodOpacity="0.26"/>
+            <filter id="ts" x="-10%" y="-20%" width="130%" height="158%">
+              <feDropShadow dx="0" dy="6" stdDeviation="7" floodColor="#000" floodOpacity="0.25"/>
             </filter>
-            <filter id="loop-shadow" x="-22%" y="-22%" width="148%" height="148%">
-              <feDropShadow dx="2" dy="6" stdDeviation="7" floodColor="#000" floodOpacity="0.24"/>
+            <filter id="ls" x="-25%" y="-25%" width="155%" height="155%">
+              <feDropShadow dx="1" dy="5" stdDeviation="6" floodColor="#000" floodOpacity="0.22"/>
             </filter>
           </defs>
 
-          {/* ── Loop ─────────────────────────────────────────── */}
-          <g filter="url(#loop-shadow)">
-            {/* Outer serrated teeth */}
-            <ellipse cx={LCX} cy={LCY} rx={LRX + 12} ry={LRY + 12}
-              fill="none" stroke={c.dark} strokeWidth="7"
-              strokeDasharray="6 5" strokeLinecap="butt" opacity="0.52"/>
-            {/* Main loop body */}
-            <ellipse cx={LCX} cy={LCY} rx={LRX} ry={LRY}
+          {/* ── Argola (atrás de tudo) ──────────────────────── */}
+          <g filter="url(#ls)">
+            {/* Corpo principal da argola */}
+            <circle cx={LCX} cy={LCY} r={LR}
               fill="none" stroke={`url(#lg-${corAtual})`} strokeWidth={LSW}/>
-            {/* Inner serrated teeth */}
-            <ellipse cx={LCX} cy={LCY} rx={LRX - 12} ry={LRY - 12}
-              fill="none" stroke={c.dark} strokeWidth="6"
-              strokeDasharray="6 5" strokeLinecap="butt" opacity="0.38"/>
-            {/* Inner wall shadow */}
-            <ellipse cx={LCX} cy={LCY} rx={LRX - 9} ry={LRY - 9}
-              fill="none" stroke={c.deeper} strokeWidth="2.5" opacity="0.22"/>
-            {/* Top highlight */}
-            <ellipse cx={LCX} cy={LCY} rx={LRX} ry={LRY}
-              fill="none" stroke="white" strokeWidth="4" opacity="0.15"
-              strokeDasharray={`${LRX * 2.0} 9999`}
-              strokeDashoffset={`${-LRX * 0.28}`}/>
+            {/* Dentes serrilhados — borda externa */}
+            <circle cx={LCX} cy={LCY} r={LR + 7}
+              fill="none" stroke={c.dark} strokeWidth="3.5"
+              strokeDasharray="5 4" strokeLinecap="butt" opacity="0.42"/>
+            {/* Dentes serrilhados — borda interna */}
+            <circle cx={LCX} cy={LCY} r={LR - 7}
+              fill="none" stroke={c.dark} strokeWidth="3"
+              strokeDasharray="5 4" strokeLinecap="butt" opacity="0.30"/>
+            {/* Sombra interna */}
+            <circle cx={LCX} cy={LCY} r={LR - 5}
+              fill="none" stroke={c.deeper} strokeWidth="2" opacity="0.20"/>
+            {/* Brilho superior */}
+            <circle cx={LCX} cy={LCY} r={LR}
+              fill="none" stroke="white" strokeWidth="3.5" opacity="0.14"
+              strokeDasharray={`${LR * 1.9} 9999`}
+              strokeDashoffset={`${-LR * 0.28}`}/>
           </g>
 
-          {/* ── Strap connector ───────────────────────────────── */}
+          {/* ── Fita conectora ────────────────────────────────── */}
           <path d={STRAP} fill={c.base}/>
-          <path d="M 190 162 C 212 136, 246 118, 268 110"
-            fill="none" stroke={c.dark} strokeWidth="3" opacity="0.36"/>
-          <path d="M 204 180 C 220 156, 254 134, 280 124"
-            fill="none" stroke={c.light} strokeWidth="2" opacity="0.18"/>
-          {[0, 1, 2, 3].map(i => (
+          <path d="M 175 138 C 186 116, 208 104, 224 100"
+            fill="none" stroke={c.dark} strokeWidth="2.5" opacity="0.35"/>
+          <path d="M 184 150 C 194 132, 214 116, 230 110"
+            fill="none" stroke={c.light} strokeWidth="1.5" opacity="0.18"/>
+          {[0, 1, 2].map(i => (
             <line key={i}
-              x1={196 + i * 14} y1={153 - i * 12}
-              x2={198 + i * 14} y2={145 - i * 12}
-              stroke={c.deeper} strokeWidth="2.5" opacity="0.32"/>
+              x1={181 + i * 13} y1={133 - i * 11}
+              x2={183 + i * 13} y2={126 - i * 11}
+              stroke={c.deeper} strokeWidth="2" opacity="0.28"/>
           ))}
 
-          {/* ── Tag body ──────────────────────────────────────── */}
-          <g filter="url(#tag-shadow)">
+          {/* ── Corpo da tag ──────────────────────────────────── */}
+          <g filter="url(#ts)">
             <rect x={TX} y={TY} width={TW} height={TH} rx={TR}
               fill={`url(#tg-${corAtual})`}/>
           </g>
-          {/* Top face sheen */}
-          <rect x={TX + TR} y={TY + 6} width={TW - TR * 2} height={5} rx="2"
-            fill="white" opacity="0.13"/>
+          {/* Reflexo superior */}
+          <rect x={TX + TR} y={TY + 6} width={TW - TR * 2} height={4} rx="2"
+            fill="white" opacity="0.12"/>
 
-          {/* ── Recessed number panel ─────────────────────────── */}
+          {/* ── Painel rebaixado ──────────────────────────────── */}
           <rect x={PX} y={PY} width={PW} height={PH} rx={PR}
-            fill={c.dark} opacity="0.18"/>
-          {/* Shadow border */}
+            fill={c.dark} opacity="0.16"/>
           <rect x={PX} y={PY} width={PW} height={PH} rx={PR}
-            fill="none" stroke={c.deeper} strokeWidth="1.5" opacity="0.35"/>
-          {/* Inner highlight edge (bottom-right) */}
+            fill="none" stroke={c.deeper} strokeWidth="1.5" opacity="0.32"/>
           <rect x={PX + 1.5} y={PY + 1.5} width={PW - 3} height={PH - 3} rx={PR - 1}
-            fill="none" stroke={c.light} strokeWidth="1" opacity="0.18"/>
+            fill="none" stroke={c.light} strokeWidth="1" opacity="0.16"/>
 
-          {/* ── Number input ──────────────────────────────────── */}
+          {/* ── Input do número ───────────────────────────────── */}
           <foreignObject x={PX + 4} y={PY + 1} width={PW - 8} height={PH - 2}>
             {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
             {/* @ts-ignore */}
@@ -157,7 +157,7 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
                   background: 'transparent', border: 'none', outline: 'none',
                   width: '100%', textAlign: 'center',
                   color: c.numColor,
-                  fontSize: '18px', fontWeight: '700',
+                  fontSize: '17px', fontWeight: '700',
                   fontFamily: '"Trebuchet MS", system-ui, sans-serif',
                   letterSpacing: '3px',
                   textShadow: '0 2px 4px rgba(0,0,0,0.45)',
@@ -167,10 +167,10 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
             </div>
           </foreignObject>
 
-          {/* ── Rivet ─────────────────────────────────────────── */}
-          <circle cx={RCX} cy={RCY} r={RR + 7} fill={c.deeper} opacity="0.28"/>
+          {/* ── Rebite ────────────────────────────────────────── */}
+          <circle cx={RCX} cy={RCY} r={RR + 6} fill={c.deeper} opacity="0.25"/>
           <circle cx={RCX} cy={RCY} r={RR} fill={`url(#rg-${corAtual})`}/>
-          <circle cx={RCX - 4} cy={RCY - 4} r={4} fill="white" opacity="0.26"/>
+          <circle cx={RCX - 3} cy={RCY - 3} r={3} fill="white" opacity="0.24"/>
         </svg>
       </div>
 
