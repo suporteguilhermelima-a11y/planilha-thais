@@ -31,8 +31,15 @@ export default function NovoMedicamentoModal({ categoriaId, mochilaId, onClose, 
       .order('nome')
       .then(({ data }) => {
         if (data) {
-          setTodos(data)
-          setLista(data.filter(m => m.mochila_id !== mochilaId).slice(0, 40))
+          // Deduplica por nome — mantém a primeira ocorrência de cada nome
+          const vistos = new Map<string, Medicamento>()
+          for (const m of data) {
+            const chave = m.nome.trim().toUpperCase()
+            if (!vistos.has(chave)) vistos.set(chave, m)
+          }
+          const unicos = Array.from(vistos.values())
+          setTodos(unicos)
+          setLista(unicos.filter(m => m.mochila_id !== mochilaId).slice(0, 40))
         }
       })
   }, [mochilaId])
