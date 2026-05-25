@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Medicamento, LoteInput } from '@/types'
 import LoteFields from './LoteFields'
 import { supabase } from '@/lib/supabase'
@@ -45,6 +45,13 @@ export default function MedicamentoRow({ medicamento, onUpdate, outrasMovilas = 
   const dropdownRef = useRef<HTMLDivElement>(null)
   const dropdownEditorRef = useRef<HTMLDivElement>(null)
   const moverRef = useRef<HTMLDivElement>(null)
+  const lotesRef = useRef(lotes)
+  const qtdeRef = useRef(qtde)
+  const expandidoRef = useRef(expandido)
+
+  useEffect(() => { lotesRef.current = lotes }, [lotes])
+  useEffect(() => { qtdeRef.current = qtde }, [qtde])
+  useEffect(() => { expandidoRef.current = expandido }, [expandido])
 
   useEffect(() => {
     if (!dropdownAberto && !dropdownEditorAberto && !moverAberto) return
@@ -63,6 +70,37 @@ export default function MedicamentoRow({ medicamento, onUpdate, outrasMovilas = 
     document.addEventListener('mousedown', handle)
     return () => document.removeEventListener('mousedown', handle)
   }, [dropdownAberto, dropdownEditorAberto, moverAberto])
+
+  const salvarSilencioso = useCallback(async () => {
+    if (!expandidoRef.current) return
+    const qtdeAtual = qtdeRef.current
+    const lotesAtual = lotesRef.current
+    const lotesParaSalvar = lotesAtual
+      .filter((l) => l.numero_lote.trim() !== '')
+      .map((l) => ({
+        medicamento_id: medicamento.id,
+        numero_lote: l.numero_lote.trim(),
+        validade: l.validade || null,
+        quantidade: l.quantidade,
+      }))
+    await supabase.from('medicamentos').update({ qtde_estoque: qtdeAtual }).eq('id', medicamento.id)
+    await supabase.from('lotes').delete().eq('medicamento_id', medicamento.id)
+    if (lotesParaSalvar.length > 0) {
+      await supabase.from('lotes').insert(lotesParaSalvar)
+    }
+  }, [medicamento.id])
+
+  // Auto-save ao trocar de aba do navegador
+  useEffect(() => {
+    const handle = () => { if (document.hidden) salvarSilencioso() }
+    document.addEventListener('visibilitychange', handle)
+    return () => document.removeEventListener('visibilitychange', handle)
+  }, [salvarSilencioso])
+
+  // Auto-save ao desmontar (troca de mochila/categoria)
+  useEffect(() => {
+    return () => { salvarSilencioso() }
+  }, [salvarSilencioso])
 
   const lotesAtuais = medicamento.lotes || []
 
