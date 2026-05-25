@@ -4,11 +4,17 @@ import { useState } from 'react'
 
 type Cor = 'azul' | 'amarelo' | 'vermelho'
 
-// Filtros CSS para mudar a cor da foto (base = vermelho original)
 const FILTRO: Record<Cor, string> = {
   vermelho: 'none',
   amarelo:  'hue-rotate(58deg) saturate(1.1)',
   azul:     'hue-rotate(222deg) saturate(0.95) brightness(1.08)',
+}
+
+// Cor que cobre o número original da foto (aproxima a superfície da tag filtrada)
+const OVERLAY_COR: Record<Cor, string> = {
+  vermelho: 'rgba(178, 22, 22, 0.92)',
+  amarelo:  'rgba(185, 135, 0, 0.92)',
+  azul:     'rgba(18, 52, 168, 0.92)',
 }
 
 const COR_DOT: Record<Cor, string> = {
@@ -16,6 +22,10 @@ const COR_DOT: Record<Cor, string> = {
   amarelo:  '#f0c000',
   azul:     '#2060d8',
 }
+
+// Imagem 1536×1024 → renderizada 300×200px
+// Área do número na foto: ~left=5%, top=58%, width=54%, height=30%
+const NUM = { left: '5%', top: '58%', width: '54%', height: '30%' }
 
 type Props = {
   numero: string
@@ -37,20 +47,34 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
 
   return (
     <div className="flex items-center gap-3 mt-1" style={{ userSelect: 'none' }}>
-      {/* Foto do lacre com input sobreposto */}
-      <div style={{ position: 'relative', display: 'inline-block', lineHeight: 0 }}>
+
+      {/* Container com dimensões explícitas para o position:absolute funcionar */}
+      <div style={{ position: 'relative', width: 300, height: 200, flexShrink: 0 }}>
+
+        {/* Foto do lacre com filtro de cor */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/lacre.png"
           alt="lacre"
-          width={300}
           style={{
+            position: 'absolute', top: 0, left: 0,
+            width: '100%', height: '100%',
+            objectFit: 'contain',
             filter: FILTRO[corAtual],
-            display: 'block',
             transition: 'filter 0.25s ease',
           }}
         />
-        {/* Input sobreposto na área do número da tag */}
+
+        {/* Retângulo que apaga o número original da foto */}
+        <div style={{
+          position: 'absolute',
+          left: NUM.left, top: NUM.top, width: NUM.width, height: NUM.height,
+          background: OVERLAY_COR[corAtual],
+          borderRadius: 6,
+          transition: 'background 0.25s ease',
+        }}/>
+
+        {/* Input sobreposto exatamente onde estão os números */}
         <input
           type="text"
           inputMode="numeric"
@@ -62,15 +86,12 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
           placeholder="0000000"
           style={{
             position: 'absolute',
-            left: '10%',
-            top: '59%',
-            width: '60%',
-            height: '29%',
+            left: NUM.left, top: NUM.top, width: NUM.width, height: NUM.height,
             background: 'transparent',
             border: 'none',
             outline: 'none',
             textAlign: 'center',
-            color: 'rgba(255,255,255,0.88)',
+            color: 'rgba(255,255,255,0.90)',
             fontSize: '18px',
             fontWeight: '800',
             fontFamily: '"Trebuchet MS", system-ui, sans-serif',
