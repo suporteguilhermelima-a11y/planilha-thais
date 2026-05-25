@@ -226,13 +226,13 @@ export default function Home() {
   @page { size: A4 portrait; margin: 8mm 10mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; font-size: ${fontSize}; }
-  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  table { width: 100%; border-collapse: collapse; table-layout: auto; }
   th, td { border: 1px solid #000; padding: 2px 4px; word-wrap: break-word; overflow-wrap: break-word; }
   .row-title th { background: #e8e8e8; }
   .row-date td { background: #f5f5f5; }
   .row-header th { background: #d0d0d0; font-weight: bold; text-align: center; }
-  .col-qtde { width: 8%; }
-  .col-desc { width: 48%; }
+  .col-qtde { width: 1px; white-space: nowrap; text-align: center; }
+  .col-desc { }
   .col-lote { width: 28%; }
   .col-valid { width: 16%; }
   @media print {
