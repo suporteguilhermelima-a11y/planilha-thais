@@ -18,6 +18,8 @@ export type Mochila = {
   ordem: number
   created_at: string
   total_itens?: number
+  numero_lacre: string | null
+  cor_lacre: string | null
 }
 
 export type Medicamento = {
