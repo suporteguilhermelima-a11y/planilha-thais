@@ -10,6 +10,14 @@ const COR_DOT: Record<Cor, string> = {
   azul:     '#2060d8',
 }
 
+// Filtro aplicado no wrapper inteiro (img + overlay) pra que a cor do
+// recesso sempre acompanhe a cor do lacre. Base amarela ≈ hue 60°.
+const FILTRO: Record<Cor, string> = {
+  amarelo:  'none',
+  vermelho: 'hue-rotate(-60deg) saturate(1.15)',
+  azul:     'hue-rotate(180deg) saturate(1.4)',
+}
+
 // Cor amarela que cobre o "123456" impresso na foto base
 // Amostrada via PIL no recesso da tag — bate exato com o entorno
 const OVERLAY_AMARELO = 'rgb(251, 235, 80)'
@@ -40,8 +48,16 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
   return (
     <div className="flex items-center gap-3 mt-1" style={{ userSelect: 'none' }}>
 
-      {/* Container: inline-block + relative abraça a altura natural da imagem */}
-      <div style={{ position: 'relative', display: 'inline-block', lineHeight: 0, flexShrink: 0 }}>
+      {/* Container: inline-block + relative abraça a altura natural da imagem.
+          Filtro aqui afeta img + overlay (input tem só texto preto, sem hue) */}
+      <div style={{
+        position: 'relative',
+        display: 'inline-block',
+        lineHeight: 0,
+        flexShrink: 0,
+        filter: FILTRO[corAtual],
+        transition: 'filter 0.25s ease',
+      }}>
 
         {/* Foto em fluxo normal — define a altura real do container */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
