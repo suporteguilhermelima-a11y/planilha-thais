@@ -4,28 +4,18 @@ import { useState } from 'react'
 
 type Cor = 'azul' | 'amarelo' | 'vermelho'
 
-const FILTRO: Record<Cor, string> = {
-  vermelho: 'none',
-  amarelo:  'hue-rotate(58deg) saturate(1.1)',
-  azul:     'hue-rotate(222deg) saturate(0.95) brightness(1.08)',
-}
-
-// Cor que cobre o número original da foto (aproxima a superfície da tag filtrada)
-const OVERLAY_COR: Record<Cor, string> = {
-  vermelho: 'rgba(178, 22, 22, 0.92)',
-  amarelo:  'rgba(185, 135, 0, 0.92)',
-  azul:     'rgba(18, 52, 168, 0.92)',
-}
-
 const COR_DOT: Record<Cor, string> = {
   vermelho: '#d42020',
   amarelo:  '#f0c000',
   azul:     '#2060d8',
 }
 
-// Imagem 1536×1024 → renderizada 300×200px
-// Área do número na foto: ~left=5%, top=58%, width=54%, height=30%
-const NUM = { left: '5%', top: '58%', width: '54%', height: '30%' }
+// Cor amarela que cobre o "123456" impresso na foto base
+const OVERLAY_AMARELO = 'rgb(247, 197, 8)'
+
+// Imagem 1320×661 → renderizada 300px de largura
+// Área do número impresso na foto (recesso da tag): ~left=9%, top=38%, width=34%, height=22%
+const NUM = { left: '9%', top: '38%', width: '34%', height: '22%' }
 
 type Props = {
   numero: string
@@ -57,20 +47,15 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
           src="/lacre.png"
           alt="lacre"
           width={300}
-          style={{
-            display: 'block',
-            filter: FILTRO[corAtual],
-            transition: 'filter 0.25s ease',
-          }}
+          style={{ display: 'block' }}
         />
 
         {/* Retângulo que apaga o número original da foto */}
         <div style={{
           position: 'absolute',
           left: NUM.left, top: NUM.top, width: NUM.width, height: NUM.height,
-          background: OVERLAY_COR[corAtual],
-          borderRadius: 6,
-          transition: 'background 0.25s ease',
+          background: OVERLAY_AMARELO,
+          borderRadius: 4,
         }}/>
 
         {/* Input sobreposto exatamente onde estão os números */}
@@ -90,13 +75,12 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
             border: 'none',
             outline: 'none',
             textAlign: 'center',
-            color: 'rgba(255,255,255,0.90)',
-            fontSize: '18px',
-            fontWeight: '800',
-            fontFamily: '"Trebuchet MS", system-ui, sans-serif',
-            letterSpacing: '4px',
-            textShadow: '0 1px 4px rgba(0,0,0,0.5)',
-            caretColor: 'white',
+            color: '#000',
+            fontSize: '16px',
+            fontWeight: '700',
+            fontFamily: 'system-ui, "Segoe UI", sans-serif',
+            letterSpacing: '2px',
+            caretColor: '#000',
             cursor: 'text',
           }}
         />
