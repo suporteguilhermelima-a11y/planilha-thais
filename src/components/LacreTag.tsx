@@ -5,24 +5,26 @@ import { useState } from 'react'
 type Cor = 'azul' | 'amarelo' | 'vermelho'
 
 const COR_DOT: Record<Cor, string> = {
-  vermelho: '#d42020',
+  vermelho: '#FF2C2C',
   amarelo:  '#f0c000',
-  azul:     '#2060d8',
+  azul:     '#2060D8',
 }
 
-// Filtro aplicado no wrapper inteiro (img + overlay) pra que a cor do
-// recesso sempre acompanhe a cor do lacre. Base amarela ≈ hue 60°.
-const FILTRO: Record<Cor, string> = {
-  amarelo:  'none',
-  vermelho: 'hue-rotate(-60deg) saturate(1.15)',
-  azul:     'hue-rotate(180deg) saturate(1.4)',
+// PNGs pre-tingidos via PIL (HSV remap) — cores exatas, sem filtro CSS
+const IMG_SRC: Record<Cor, string> = {
+  amarelo:  '/lacre.png',
+  vermelho: '/lacre-vermelho.png',
+  azul:     '/lacre-azul.png',
 }
 
-// Cor amarela que cobre o "123456" impresso na foto base
-// Amostrada via PIL no recesso da tag — bate exato com o entorno
-const OVERLAY_AMARELO = 'rgb(251, 235, 80)'
+// Cor do recesso (amostrada no centro de cada PNG tingido) — bate com o entorno
+const OVERLAY: Record<Cor, string> = {
+  amarelo:  'rgb(251, 235, 80)',
+  vermelho: 'rgb(254, 44, 44)',
+  azul:     'rgb(32, 95, 216)',
+}
 
-// Imagem 1320×661 → renderizada 400px de largura (≈ 200px de altura)
+// Imagem 1320×661 → renderizada 240px de largura (≈ 120px de altura)
 // Bbox real do "123456" na foto: x=[25.2%, 43.3%], y=[58.2%, 66.4%]
 // Adiciona margem pequena pra cobrir kerning/antialiasing
 const NUM = { left: '23.5%', top: '56%', width: '21%', height: '12%' }
@@ -48,23 +50,15 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
   return (
     <div className="flex items-center gap-3 mt-1" style={{ userSelect: 'none' }}>
 
-      {/* Container: inline-block + relative abraça a altura natural da imagem.
-          Filtro aqui afeta img + overlay (input tem só texto preto, sem hue) */}
-      <div style={{
-        position: 'relative',
-        display: 'inline-block',
-        lineHeight: 0,
-        flexShrink: 0,
-        filter: FILTRO[corAtual],
-        transition: 'filter 0.25s ease',
-      }}>
+      {/* Container: inline-block + relative abraça a altura natural da imagem */}
+      <div style={{ position: 'relative', display: 'inline-block', lineHeight: 0, flexShrink: 0 }}>
 
         {/* Foto em fluxo normal — define a altura real do container */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/lacre.png"
+          src={IMG_SRC[corAtual]}
           alt="lacre"
-          width={400}
+          width={240}
           style={{ display: 'block' }}
         />
 
@@ -72,7 +66,7 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
         <div style={{
           position: 'absolute',
           left: NUM.left, top: NUM.top, width: NUM.width, height: NUM.height,
-          background: OVERLAY_AMARELO,
+          background: OVERLAY[corAtual],
           borderRadius: 4,
         }}/>
 
@@ -94,10 +88,10 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
             outline: 'none',
             textAlign: 'center',
             color: '#000',
-            fontSize: '14px',
+            fontSize: '11px',
             fontWeight: '700',
             fontFamily: 'system-ui, "Segoe UI", sans-serif',
-            letterSpacing: '1px',
+            letterSpacing: '0px',
             caretColor: '#000',
             cursor: 'text',
           }}
