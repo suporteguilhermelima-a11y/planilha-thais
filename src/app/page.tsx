@@ -52,14 +52,14 @@ export default function Home() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'medicamentos', filter: `mochila_id=eq.${mid}` }, () => {
         if (debounceRef.current) clearTimeout(debounceRef.current)
         debounceRef.current = setTimeout(() => {
-          carregarMedicamentos(mid)
+          carregarMedicamentos(mid, true)
           carregarAlertasGlobais()
         }, 600)
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lotes' }, () => {
         if (debounceRef.current) clearTimeout(debounceRef.current)
         debounceRef.current = setTimeout(() => {
-          carregarMedicamentos(mid)
+          carregarMedicamentos(mid, true)
           carregarAlertasGlobais()
         }, 600)
       })
@@ -112,8 +112,8 @@ export default function Home() {
     setCarregandoAlertas(false)
   }, [])
 
-  const carregarMedicamentos = useCallback(async (mochilaId: string) => {
-    setCarregando(true)
+  const carregarMedicamentos = useCallback(async (mochilaId: string, silent = false) => {
+    if (!silent) setCarregando(true)
     const { data } = await supabase
       .from('medicamentos')
       .select('*, lotes(*)')
@@ -121,7 +121,7 @@ export default function Home() {
       .eq('ativo', true)
       .order('ordem')
     if (data) setMedicamentos(data)
-    setCarregando(false)
+    if (!silent) setCarregando(false)
   }, [])
 
   const exportarCSVMochila = async (mochila: Mochila) => {
