@@ -39,14 +39,16 @@ export default function Home() {
     carregarAlertasGlobais()
   }, [])
 
-  useEffect(() => {
-    if (mochilaAtiva) carregarMedicamentos(mochilaAtiva.id)
-    else setMedicamentos([])
-  }, [mochilaAtiva])
+  const mochilaAtivaId = mochilaAtiva?.id ?? null
 
   useEffect(() => {
-    if (!mochilaAtiva) return
-    const mid = mochilaAtiva.id
+    if (mochilaAtivaId) carregarMedicamentos(mochilaAtivaId)
+    else setMedicamentos([])
+  }, [mochilaAtivaId])
+
+  useEffect(() => {
+    if (!mochilaAtivaId) return
+    const mid = mochilaAtivaId
     const channel = supabase
       .channel(`realtime-moc-${mid}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'medicamentos', filter: `mochila_id=eq.${mid}` }, () => {
@@ -68,7 +70,7 @@ export default function Home() {
       if (debounceRef.current) clearTimeout(debounceRef.current)
       supabase.removeChannel(channel)
     }
-  }, [mochilaAtiva])
+  }, [mochilaAtivaId])
 
   const carregarCategoriasEMochilas = async () => {
     const [cats, mochs] = await Promise.all([
@@ -326,11 +328,20 @@ export default function Home() {
 
   const salvarLacre = async (novoNumero: string, novaCor: string) => {
     if (!mochilaAtiva) return
-    await supabase.from('mochilas').update({
+    const { error } = await supabase.from('mochilas').update({
       numero_lacre: novoNumero || null,
       cor_lacre: novaCor,
     }).eq('id', mochilaAtiva.id)
-    setMochilaAtiva({ ...mochilaAtiva, numero_lacre: novoNumero || null, cor_lacre: novaCor })
+    if (error) throw error
+    const updated = { ...mochilaAtiva, numero_lacre: novoNumero || null, cor_lacre: novaCor }
+    setMochilaAtiva(updated)
+    setMochilasPorCategoria(prev => {
+      const catId = mochilaAtiva.categoria_id
+      return {
+        ...prev,
+        [catId]: (prev[catId] || []).map(m => m.id === mochilaAtiva.id ? updated : m),
+      }
+    })
   }
 
   const mochilasDaCategoria = categoriaAtiva ? (mochilasPorCategoria[categoriaAtiva.id] || []) : []

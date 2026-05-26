@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Save, Loader2, Check } from 'lucide-react'
+import { Save, Loader2, Check, AlertCircle } from 'lucide-react'
 
 type Cor = 'azul' | 'amarelo' | 'vermelho'
 
@@ -42,17 +42,23 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
   const [dropdown, setDropdown] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [salvo, setSalvo] = useState(false)
+  const [erro, setErro] = useState(false)
   const salvoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const executarSave = async (v: string, c: Cor) => {
     if (salvando) return
     setSalvando(true)
     setSalvo(false)
+    setErro(false)
     try {
       await onSave(v, c)
       setSalvo(true)
       if (salvoTimer.current) clearTimeout(salvoTimer.current)
       salvoTimer.current = setTimeout(() => setSalvo(false), 2000)
+    } catch {
+      setErro(true)
+      if (salvoTimer.current) clearTimeout(salvoTimer.current)
+      salvoTimer.current = setTimeout(() => setErro(false), 3000)
     } finally {
       setSalvando(false)
     }
@@ -148,6 +154,8 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
         className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border shadow-sm transition-colors disabled:opacity-50 ${
           salvo
             ? 'border-green-300 bg-green-50 text-green-700'
+            : erro
+            ? 'border-red-300 bg-red-50 text-red-700'
             : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
         }`}
       >
@@ -155,8 +163,10 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
           ? <Loader2 size={13} className="animate-spin" />
           : salvo
           ? <Check size={13} />
+          : erro
+          ? <AlertCircle size={13} />
           : <Save size={13} />}
-        {salvando ? 'Salvando…' : salvo ? 'Salvo!' : 'Salvar'}
+        {salvando ? 'Salvando…' : salvo ? 'Salvo!' : erro ? 'Erro!' : 'Salvar'}
       </button>
     </div>
   )
