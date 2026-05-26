@@ -11,11 +11,13 @@ const COR_DOT: Record<Cor, string> = {
 }
 
 // Cor amarela que cobre o "123456" impresso na foto base
-const OVERLAY_AMARELO = 'rgb(247, 197, 8)'
+// Amostrada via PIL no recesso da tag — bate exato com o entorno
+const OVERLAY_AMARELO = 'rgb(251, 235, 80)'
 
-// Imagem 1320×661 → renderizada 300px de largura
-// Área do número impresso na foto (recesso da tag): ~left=9%, top=38%, width=34%, height=22%
-const NUM = { left: '9%', top: '38%', width: '34%', height: '22%' }
+// Imagem 1320×661 → renderizada 400px de largura (≈ 200px de altura)
+// Bbox real do "123456" na foto: x=[25.2%, 43.3%], y=[58.2%, 66.4%]
+// Adiciona margem pequena pra cobrir kerning/antialiasing
+const NUM = { left: '23.5%', top: '56%', width: '21%', height: '12%' }
 
 type Props = {
   numero: string
@@ -46,7 +48,7 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
         <img
           src="/lacre.png"
           alt="lacre"
-          width={300}
+          width={400}
           style={{ display: 'block' }}
         />
 
@@ -76,10 +78,10 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
             outline: 'none',
             textAlign: 'center',
             color: '#000',
-            fontSize: '16px',
+            fontSize: '14px',
             fontWeight: '700',
             fontFamily: 'system-ui, "Segoe UI", sans-serif',
-            letterSpacing: '2px',
+            letterSpacing: '1px',
             caretColor: '#000',
             cursor: 'text',
           }}
