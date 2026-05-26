@@ -123,20 +123,23 @@ export default function MedicamentoRow({ medicamento, onUpdate, outrasMovilas = 
     setSalvando(true)
     setErro(null)
     try {
-      await supabase.from('medicamentos').update({ qtde_estoque: qtde, updated_at: new Date().toISOString() }).eq('id', medicamento.id)
-      await supabase.from('lotes').delete().eq('medicamento_id', medicamento.id)
-      if (lotes.length > 0) {
-        const lotesParaSalvar = lotes
-          .filter((l) => l.numero_lote.trim() !== '')
-          .map((l) => ({
-            medicamento_id: medicamento.id,
-            numero_lote: l.numero_lote.trim(),
-            validade: l.validade || null,
-            quantidade: l.quantidade,
-          }))
-        if (lotesParaSalvar.length > 0) {
-          await supabase.from('lotes').insert(lotesParaSalvar)
-        }
+      const { error: errMed } = await supabase.from('medicamentos').update({ qtde_estoque: qtde, updated_at: new Date().toISOString() }).eq('id', medicamento.id)
+      if (errMed) throw errMed
+
+      const { error: errDel } = await supabase.from('lotes').delete().eq('medicamento_id', medicamento.id)
+      if (errDel) throw errDel
+
+      const lotesParaSalvar = lotesRef.current
+        .filter((l) => l.numero_lote.trim() !== '')
+        .map((l) => ({
+          medicamento_id: medicamento.id,
+          numero_lote: l.numero_lote.trim(),
+          validade: l.validade || null,
+          quantidade: l.quantidade,
+        }))
+      if (lotesParaSalvar.length > 0) {
+        const { error: errIns } = await supabase.from('lotes').insert(lotesParaSalvar)
+        if (errIns) throw errIns
       }
       setExpandido(false)
       setNumLotes(null)
@@ -371,6 +374,7 @@ export default function MedicamentoRow({ medicamento, onUpdate, outrasMovilas = 
           </div>
 
           <LoteFields lotes={lotes} onChange={(novosLotes) => {
+            lotesRef.current = novosLotes
             setLotes(novosLotes)
             setQtde(novosLotes.reduce((acc, l) => acc + (l.quantidade || 0), 0))
           }} />
