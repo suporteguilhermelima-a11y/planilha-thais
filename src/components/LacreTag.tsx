@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { Save, Loader2, Check } from 'lucide-react'
 
 type Cor = 'azul' | 'amarelo' | 'vermelho'
 
@@ -32,19 +33,37 @@ const NUM = { left: '23.5%', top: '56%', width: '21%', height: '12%' }
 type Props = {
   numero: string
   cor: Cor
-  onSave: (numero: string, cor: Cor) => void
+  onSave: (numero: string, cor: Cor) => Promise<void>
 }
 
 export default function LacreTag({ numero, cor, onSave }: Props) {
   const [val, setVal] = useState(numero)
   const [corAtual, setCorAtual] = useState<Cor>(cor)
   const [dropdown, setDropdown] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+  const [salvo, setSalvo] = useState(false)
+  const salvoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const handleBlur = () => onSave(val, corAtual)
+  const executarSave = async (v: string, c: Cor) => {
+    if (salvando) return
+    setSalvando(true)
+    setSalvo(false)
+    try {
+      await onSave(v, c)
+      setSalvo(true)
+      if (salvoTimer.current) clearTimeout(salvoTimer.current)
+      salvoTimer.current = setTimeout(() => setSalvo(false), 2000)
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const handleBlur = () => executarSave(val, corAtual)
+
   const handleCorChange = (novaCor: Cor) => {
     setCorAtual(novaCor)
     setDropdown(false)
-    onSave(val, novaCor)
+    executarSave(val, novaCor)
   }
 
   return (
@@ -120,6 +139,25 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
           </div>
         )}
       </div>
+
+      {/* Botão salvar */}
+      <button
+        onMouseDown={e => e.preventDefault()}
+        onClick={() => executarSave(val, corAtual)}
+        disabled={salvando}
+        className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border shadow-sm transition-colors disabled:opacity-50 ${
+          salvo
+            ? 'border-green-300 bg-green-50 text-green-700'
+            : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+        }`}
+      >
+        {salvando
+          ? <Loader2 size={13} className="animate-spin" />
+          : salvo
+          ? <Check size={13} />
+          : <Save size={13} />}
+        {salvando ? 'Salvando…' : salvo ? 'Salvo!' : 'Salvar'}
+      </button>
     </div>
   )
 }
