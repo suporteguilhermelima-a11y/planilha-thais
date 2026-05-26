@@ -48,18 +48,17 @@ export default function LacreTag({ numero, cor, onSave }: Props) {
   return (
     <div className="flex items-center gap-3 mt-1" style={{ userSelect: 'none' }}>
 
-      {/* Container com dimensões explícitas para o position:absolute funcionar */}
-      <div style={{ position: 'relative', width: 300, height: 200, flexShrink: 0 }}>
+      {/* Container: inline-block + relative abraça a altura natural da imagem */}
+      <div style={{ position: 'relative', display: 'inline-block', lineHeight: 0, flexShrink: 0 }}>
 
-        {/* Foto do lacre com filtro de cor */}
+        {/* Foto em fluxo normal — define a altura real do container */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/lacre.png"
           alt="lacre"
+          width={300}
           style={{
-            position: 'absolute', top: 0, left: 0,
-            width: '100%', height: '100%',
-            objectFit: 'contain',
+            display: 'block',
             filter: FILTRO[corAtual],
             transition: 'filter 0.25s ease',
           }}
