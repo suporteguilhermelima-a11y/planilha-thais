@@ -370,7 +370,10 @@ export default function MedicamentoRow({ medicamento, onUpdate, outrasMovilas = 
             </div>
           </div>
 
-          <LoteFields lotes={lotes} onChange={setLotes} />
+          <LoteFields lotes={lotes} onChange={(novosLotes) => {
+            setLotes(novosLotes)
+            setQtde(novosLotes.reduce((acc, l) => acc + (l.quantidade || 0), 0))
+          }} />
 
           {erro && <p className="text-xs text-red-600 mt-2">{erro}</p>}
 
