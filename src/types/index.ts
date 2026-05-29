@@ -91,3 +91,22 @@ export type Conferencia = {
   observacao: string | null
   created_at: string
 }
+
+export type SheetMapping = {
+  medicamento_id: string
+  sheet_name: string
+  row_index: number
+  qtde_col: string
+  desc_col: string
+  lote_col: string
+  validade_col: string
+  updated_at: string
+}
+
+export type SyncLogEntry = {
+  id: number
+  table_name: string
+  record_id: string
+  source: 'web' | 'sheets'
+  applied_at: string
+}
