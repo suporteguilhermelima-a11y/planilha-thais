@@ -164,10 +164,13 @@ export async function parseAllSheets(): Promise<ParsedItem[]> {
       const cellC = (row[2] || '').toString().trim()
       const cellD = (row[3] || '').toString().trim()
 
-      // Linha-cabeçalho de mochila: detecta na cellB sem qtde válida
-      if (cellB && MOCHILA_HEADER_RE.test(cellB) && !cellA.match(/^\d+$/)) {
+      // Linha-cabeçalho de mochila: detecta em cellA ou cellB sem qtde numérica em cellA
+      const headerText = MOCHILA_HEADER_RE.test(cellA)
+        ? cellA
+        : (MOCHILA_HEADER_RE.test(cellB) ? cellB : null)
+      if (headerText && !cellA.match(/^\d+$/)) {
         mochilaOrdem++
-        mochilaAtual = { ...parseMochilaHeader(cellB, mochilaOrdem), ordem: mochilaOrdem }
+        mochilaAtual = { ...parseMochilaHeader(headerText, mochilaOrdem), ordem: mochilaOrdem }
         itemOrdem = 0
         continue
       }
