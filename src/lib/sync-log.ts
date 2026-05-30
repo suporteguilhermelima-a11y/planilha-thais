@@ -1,9 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
 
 export type SyncSource = 'web' | 'sheets'
 
@@ -13,7 +15,7 @@ export async function recordSync(
   recordId: string,
   source: SyncSource
 ): Promise<void> {
-  await supabase.from('sync_log').insert({
+  await getSupabase().from('sync_log').insert({
     table_name: tableName,
     record_id: recordId,
     source,
@@ -30,7 +32,7 @@ export async function wasRecentlyFromSource(
 ): Promise<boolean> {
   const since = new Date(Date.now() - windowMs).toISOString()
 
-  const { data } = await supabase
+  const { data } = await getSupabase()
     .from('sync_log')
     .select('source, applied_at')
     .eq('table_name', tableName)

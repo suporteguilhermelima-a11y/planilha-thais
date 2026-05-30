@@ -1,13 +1,18 @@
 import { google, sheets_v4 } from 'googleapis'
 
-const SHEET_ID = process.env.GOOGLE_SHEETS_ID!
-const SA_EMAIL = process.env.GOOGLE_SA_CLIENT_EMAIL!
-const SA_KEY = (process.env.GOOGLE_SA_PRIVATE_KEY || '').replace(/\\n/g, '\n')
-
 let cachedClient: sheets_v4.Sheets | null = null
+
+function getEnv() {
+  return {
+    SHEET_ID: process.env.GOOGLE_SHEETS_ID!,
+    SA_EMAIL: process.env.GOOGLE_SA_CLIENT_EMAIL!,
+    SA_KEY: (process.env.GOOGLE_SA_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+  }
+}
 
 export function getSheetsClient(): sheets_v4.Sheets {
   if (cachedClient) return cachedClient
+  const { SA_EMAIL, SA_KEY } = getEnv()
 
   const auth = new google.auth.JWT({
     email: SA_EMAIL,
@@ -20,12 +25,12 @@ export function getSheetsClient(): sheets_v4.Sheets {
 }
 
 export function getSheetId(): string {
-  return SHEET_ID
+  return getEnv().SHEET_ID
 }
 
 export async function listSheetTabs(): Promise<{ title: string; sheetId: number }[]> {
   const sheets = getSheetsClient()
-  const res = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const res = await sheets.spreadsheets.get({ spreadsheetId: getEnv().SHEET_ID })
   return (res.data.sheets || []).map(s => ({
     title: s.properties?.title || '',
     sheetId: s.properties?.sheetId || 0,
@@ -35,7 +40,7 @@ export async function listSheetTabs(): Promise<{ title: string; sheetId: number 
 export async function getSheetValues(sheetTitle: string): Promise<string[][]> {
   const sheets = getSheetsClient()
   const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
+    spreadsheetId: getEnv().SHEET_ID,
     range: `'${sheetTitle}'`,
     valueRenderOption: 'FORMATTED_VALUE',
   })
@@ -49,7 +54,7 @@ export async function updateCell(
 ): Promise<void> {
   const sheets = getSheetsClient()
   await sheets.spreadsheets.values.update({
-    spreadsheetId: SHEET_ID,
+    spreadsheetId: getEnv().SHEET_ID,
     range: `'${sheetTitle}'!${cellA1}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [[value]] },
@@ -63,7 +68,7 @@ export async function updateRange(
 ): Promise<void> {
   const sheets = getSheetsClient()
   await sheets.spreadsheets.values.update({
-    spreadsheetId: SHEET_ID,
+    spreadsheetId: getEnv().SHEET_ID,
     range: `'${sheetTitle}'!${rangeA1}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values },

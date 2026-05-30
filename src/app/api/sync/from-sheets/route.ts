@@ -3,12 +3,15 @@ import { createClient } from '@supabase/supabase-js'
 import { recordSync } from '@/lib/sync-log'
 import { normalizeDate, splitMultiLotes } from '@/lib/sheet-parser'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
-const SECRET = process.env.SYNC_WEBHOOK_SECRET!
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
 
 type Payload = {
   sheet: string
@@ -19,6 +22,9 @@ type Payload = {
 }
 
 export async function POST(request: Request) {
+  const supabase = getSupabase()
+  const SECRET = process.env.SYNC_WEBHOOK_SECRET!
+
   // 1. Auth
   const auth = request.headers.get('authorization') || ''
   if (!auth.startsWith('Bearer ') || auth.slice(7) !== SECRET) {
