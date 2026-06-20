@@ -1,0 +1,53 @@
+# Stress Test — Artillery
+# Uso:
+#   artillery run tests/stress/artillery-test.yml
+#   artillery run --output resultado.json tests/stress/artillery-test.yml
+#   artillery report resultado.json    (gera HTML)
+#
+# Para produção, mude o "target" abaixo ou use:
+#   artillery run --target https://meu-app.com tests/stress/artillery-test.yml
+
+config:
+  target: "http://localhost:3000"    # ← Mude para sua URL
+  phases:
+    - name: "Aquecimento"
+      duration: 30
+      arrivalRate: 5                 # 5 usuários/segundo
+
+    - name: "Carga normal"
+      duration: 60
+      arrivalRate: 20                # 20 usuários/segundo
+
+    - name: "Pico de stress"
+      duration: 30
+      arrivalRate: 100               # 100 usuários/segundo
+
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  - name: "Pagina principal"
+    weight: 60                       # 60% do tráfego
+    flow:
+      - get:
+          url: "/"
+          expect:
+            - statusCode: 200
+
+  - name: "API endpoint"
+    weight: 30                       # 30% do tráfego
+    flow:
+      - get:
+          url: "/api/seu-endpoint"   # ← Ajuste a rota
+          expect:
+            - statusCode: 200
+
+  - name: "Login"
+    weight: 10                       # 10% do tráfego
+    flow:
+      - post:
+          url: "/api/auth/login"     # ← Ajuste a rota
+          json:
+            email: "teste@email.com"
+            password: "senha-errada"
